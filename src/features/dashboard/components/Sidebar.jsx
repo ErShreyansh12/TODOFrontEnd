@@ -5,7 +5,7 @@ import { ROUTES } from '@/constants/routes'
 const NAV_LINKS = [
   { label: 'Dashboard', icon: 'dashboard', to: ROUTES.ADMIN_DASHBOARD },
   { label: 'Task Board', icon: 'assignment' },
-  { label: 'Staff Directory', icon: 'group' },
+  { label: 'Staff Directory', icon: 'group', to: ROUTES.ADMIN_STAFF },
   { label: 'Schedule', icon: 'calendar_month' },
   { label: 'Private Notes', icon: 'sticky_note_2' },
   { label: 'Reports', icon: 'analytics' },
