@@ -1,18 +1,22 @@
 import { useMemo, useState } from 'react'
-import StatusChip from '@/features/staff/components/StatusChip'
 import AddStaffModal from '@/features/staff/components/AddStaffModal'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
+import StatusChip from '@/features/staff/components/StatusChip'
 import { STAFF_MEMBERS, STAFF_STATS } from '@/features/staff/data/staff.data'
 
 export default function StaffDirectory() {
   const [staff, setStaff] = useState(STAFF_MEMBERS)
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [staffToDelete, setStaffToDelete] = useState(null)
 
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase()
     if (!query) return staff
     return staff.filter((member) =>
-      [member.name, member.id, member.department].some((field) => field.toLowerCase().includes(query)),
+      [`${member.firstName} ${member.lastName}`, member.id, member.email, member.phone].some((field) =>
+        (field ?? '').toLowerCase().includes(query),
+      ),
     )
   }, [staff, search])
 
@@ -20,10 +24,10 @@ export default function StaffDirectory() {
     setStaff((prev) => [
       {
         id: `EMP-${100 + prev.length + 5}`,
-        name: values.name,
+        firstName: values.firstName,
+        lastName: values.lastName,
         email: values.email,
-        designation: values.designation,
-        department: values.department,
+        phone: values.phone,
         status: 'active',
       },
       ...prev,
@@ -36,6 +40,11 @@ export default function StaffDirectory() {
         member.id === id ? { ...member, status: member.status === 'active' ? 'inactive' : 'active' } : member,
       ),
     )
+  }
+
+  const handleConfirmDelete = () => {
+    setStaff((prev) => prev.filter((member) => member.id !== staffToDelete.id))
+    setStaffToDelete(null)
   }
 
   return (
@@ -62,7 +71,7 @@ export default function StaffDirectory() {
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name, ID, or department..."
+          placeholder="Search by name, ID, email, or phone..."
           className="h-9 min-w-[220px] flex-1 rounded-lg border border-border-light bg-surface-container-lowest px-4 text-body-md text-on-surface shadow-sm transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
         />
         <div className="flex shrink-0 items-center gap-2 text-label-md text-on-surface-variant">
@@ -77,10 +86,10 @@ export default function StaffDirectory() {
           <table className="w-full min-w-[760px] border-collapse text-left">
             <thead>
               <tr className="border-b border-border-light bg-surface-subtle text-label-bold font-bold tracking-[0.05em] text-on-surface-variant uppercase">
-                <th className="p-unit-md py-unit-sm font-medium">ID</th>
-                <th className="p-unit-md py-unit-sm font-medium">Staff Member</th>
-                <th className="p-unit-md py-unit-sm font-medium">Designation</th>
-                <th className="p-unit-md py-unit-sm font-medium">Department</th>
+                <th className="p-unit-md py-unit-sm font-medium">Employee ID</th>
+                <th className="p-unit-md py-unit-sm font-medium">Name</th>
+                <th className="p-unit-md py-unit-sm font-medium">Email</th>
+                <th className="p-unit-md py-unit-sm font-medium">Phone Number</th>
                 <th className="p-unit-md py-unit-sm font-medium">Status</th>
                 <th className="p-unit-md py-unit-sm text-right font-medium">Actions</th>
               </tr>
@@ -94,12 +103,11 @@ export default function StaffDirectory() {
                   }`}
                 >
                   <td className="p-unit-md text-on-surface-variant">#{member.id}</td>
-                  <td className="p-unit-md">
-                    <p className="font-bold text-on-surface">{member.name}</p>
-                    <p className="text-label-md text-on-surface-variant">{member.email}</p>
+                  <td className="p-unit-md font-bold text-on-surface">
+                    {member.firstName} {member.lastName}
                   </td>
-                  <td className="p-unit-md">{member.designation}</td>
-                  <td className="p-unit-md text-on-surface-variant">{member.department}</td>
+                  <td className="p-unit-md text-on-surface-variant">{member.email || '—'}</td>
+                  <td className="p-unit-md text-on-surface-variant">{member.phone || '—'}</td>
                   <td className="p-unit-md">
                     <StatusChip status={member.status} />
                   </td>
@@ -133,6 +141,14 @@ export default function StaffDirectory() {
                           {member.status === 'active' ? 'person_off' : 'person_add'}
                         </span>
                       </button>
+                      <button
+                        type="button"
+                        title="Delete"
+                        onClick={() => setStaffToDelete(member)}
+                        className="flex h-8 w-8 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-error-container hover:text-error"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -153,6 +169,17 @@ export default function StaffDirectory() {
       </div>
 
       {isModalOpen && <AddStaffModal onClose={() => setIsModalOpen(false)} onAdd={handleAddStaff} />}
+
+      {staffToDelete && (
+        <ConfirmDialog
+          title="Delete Staff Member"
+          description={`Are you sure you want to delete ${staffToDelete.firstName} ${staffToDelete.lastName}'s staff detail? This action cannot be undone.`}
+          confirmLabel="Yes, Delete"
+          cancelLabel="No"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setStaffToDelete(null)}
+        />
+      )}
     </>
   )
 }

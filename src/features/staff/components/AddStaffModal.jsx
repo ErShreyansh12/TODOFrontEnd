@@ -9,7 +9,7 @@ export default function AddStaffModal({ onClose, onAdd }) {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(addStaffSchema),
-    defaultValues: { name: '', email: '', designation: '', department: '' },
+    defaultValues: { firstName: '', lastName: '', email: '', phone: '' },
   })
 
   const onSubmit = (values) => {
@@ -34,23 +34,39 @@ export default function AddStaffModal({ onClose, onAdd }) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-unit-lg p-unit-lg">
-          <div className="space-y-2">
-            <label htmlFor="staffName" className="block text-label-bold font-bold text-on-surface">
-              Full Name <span className="text-error">*</span>
-            </label>
-            <input
-              id="staffName"
-              type="text"
-              placeholder="e.g., Priya Nair"
-              className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
-              {...register('name')}
-            />
-            {errors.name && <p className="text-sm text-error">{errors.name.message}</p>}
+          <div className="grid grid-cols-1 gap-unit-lg md:grid-cols-2">
+            <div className="space-y-2">
+              <label htmlFor="staffFirstName" className="block text-label-bold font-bold text-on-surface">
+                First Name <span className="text-error">*</span>
+              </label>
+              <input
+                id="staffFirstName"
+                type="text"
+                placeholder="e.g., Priya"
+                className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+                {...register('firstName')}
+              />
+              {errors.firstName && <p className="text-sm text-error">{errors.firstName.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="staffLastName" className="block text-label-bold font-bold text-on-surface">
+                Last Name <span className="text-error">*</span>
+              </label>
+              <input
+                id="staffLastName"
+                type="text"
+                placeholder="e.g., Nair"
+                className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+                {...register('lastName')}
+              />
+              {errors.lastName && <p className="text-sm text-error">{errors.lastName.message}</p>}
+            </div>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="staffEmail" className="block text-label-bold font-bold text-on-surface">
-              Email <span className="text-error">*</span>
+              Email
             </label>
             <input
               id="staffEmail"
@@ -62,34 +78,18 @@ export default function AddStaffModal({ onClose, onAdd }) {
             {errors.email && <p className="text-sm text-error">{errors.email.message}</p>}
           </div>
 
-          <div className="grid grid-cols-1 gap-unit-lg md:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="staffDesignation" className="block text-label-bold font-bold text-on-surface">
-                Designation <span className="text-error">*</span>
-              </label>
-              <input
-                id="staffDesignation"
-                type="text"
-                placeholder="e.g., UX Researcher"
-                className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
-                {...register('designation')}
-              />
-              {errors.designation && <p className="text-sm text-error">{errors.designation.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="staffDepartment" className="block text-label-bold font-bold text-on-surface">
-                Department <span className="text-error">*</span>
-              </label>
-              <input
-                id="staffDepartment"
-                type="text"
-                placeholder="e.g., Design"
-                className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
-                {...register('department')}
-              />
-              {errors.department && <p className="text-sm text-error">{errors.department.message}</p>}
-            </div>
+          <div className="space-y-2">
+            <label htmlFor="staffPhone" className="block text-label-bold font-bold text-on-surface">
+              Phone Number
+            </label>
+            <input
+              id="staffPhone"
+              type="tel"
+              placeholder="e.g., +1 (415) 555-0136"
+              className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+              {...register('phone')}
+            />
+            {errors.phone && <p className="text-sm text-error">{errors.phone.message}</p>}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-border-light pt-unit-lg">

@@ -5,6 +5,7 @@ import Login from '@/pages/auth/Login'
 import Dashboard from '@/pages/admin/Dashboard'
 import CreateTask from '@/pages/admin/CreateTask'
 import StaffDirectory from '@/pages/admin/StaffDirectory'
+import Schedule from '@/pages/admin/Schedule'
 import NotFound from '@/pages/errors/NotFound'
 import Unauthorized from '@/pages/errors/Unauthorized'
 import ProtectedRoute from '@/routes/ProtectedRoute'
@@ -26,6 +27,7 @@ export default function AppRoutes() {
             <Route path={ROUTES.ADMIN_DASHBOARD} element={<Dashboard />} />
             <Route path={ROUTES.ADMIN_TASKS_CREATE} element={<CreateTask />} />
             <Route path={ROUTES.ADMIN_STAFF} element={<StaffDirectory />} />
+            <Route path={ROUTES.ADMIN_SCHEDULE} element={<Schedule />} />
           </Route>
         </Route>
       </Route>
