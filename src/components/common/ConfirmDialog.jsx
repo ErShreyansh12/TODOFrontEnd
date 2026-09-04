@@ -4,17 +4,24 @@ export default function ConfirmDialog({
   confirmLabel = 'Yes',
   cancelLabel = 'No',
   confirmIcon = 'delete',
+  tone = 'danger',
   onConfirm,
   onCancel,
 }) {
+  const isDanger = tone === 'danger'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-margin-mobile">
       <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={onCancel} aria-hidden="true" />
       <div className="relative w-full max-w-sm overflow-hidden rounded-xl border border-border-light bg-surface-container-lowest shadow-xl">
         <div className="p-unit-lg">
           <div className="flex items-start gap-unit-md">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-error-container text-error">
-              <span className="material-symbols-outlined">warning</span>
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                isDanger ? 'bg-error-container text-error' : 'bg-primary-container/10 text-primary'
+              }`}
+            >
+              <span className="material-symbols-outlined">{isDanger ? 'warning' : confirmIcon}</span>
             </div>
             <div>
               <h2 className="font-[var(--font-headline)] text-headline-sm text-on-surface">{title}</h2>
@@ -33,7 +40,11 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="flex items-center justify-center gap-2 rounded-lg bg-error px-6 py-2.5 text-label-bold font-bold text-on-error shadow-sm transition-colors hover:opacity-90"
+            className={`flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-label-bold font-bold shadow-sm transition-colors ${
+              isDanger
+                ? 'bg-error text-on-error hover:opacity-90'
+                : 'bg-primary-container text-on-primary hover:bg-primary'
+            }`}
           >
             <span className="material-symbols-outlined text-[18px]">{confirmIcon}</span>
             {confirmLabel}

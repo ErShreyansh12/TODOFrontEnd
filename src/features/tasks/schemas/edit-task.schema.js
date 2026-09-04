@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { validateCustomDates } from '@/features/tasks/schemas/customDatesRefinement'
+import { createCustomDatesValidator } from '@/features/tasks/schemas/customDatesRefinement'
 
-export const createTaskSchema = z
+export const editTaskSchema = z
   .object({
     title: z.string().min(1, 'Task title is required'),
     description: z.string().optional(),
@@ -9,7 +9,7 @@ export const createTaskSchema = z
     assignedTo: z.string().min(1, 'Please select a staff member'),
     timeline: z.string().min(1, 'Please select a timeline'),
     customDates: z.array(z.object({ date: z.string() })).optional(),
+    dueDate: z.string().min(1, 'Due date is required'),
     priority: z.enum(['low', 'medium', 'high']),
-    status: z.enum(['pending', 'scheduled']),
   })
-  .superRefine(validateCustomDates)
+  .superRefine(createCustomDatesValidator({ checkPastDates: false }))
