@@ -8,22 +8,32 @@ export const TASK_STATUS = {
   COMPLETED: 'completed',
 }
 
-export const COLUMN_DEFS = [
-  { key: 'todo', label: 'To Do', dotClass: 'bg-status-scheduled', borderClass: 'border-t-status-scheduled' },
-  {
-    key: 'in_progress',
+export const STATUS_META = {
+  todo: {
+    label: 'To Do',
+    dotClass: 'bg-status-scheduled',
+    textClass: 'text-status-scheduled',
+    bgClass: 'bg-status-scheduled/10',
+  },
+  in_progress: {
     label: 'In Progress',
     dotClass: 'bg-status-pending',
-    borderClass: 'border-t-status-pending',
+    textClass: 'text-status-pending',
+    bgClass: 'bg-status-pending/10',
   },
-  { key: 'delayed', label: 'Delayed', dotClass: 'bg-status-delayed', borderClass: 'border-t-status-delayed' },
-  {
-    key: 'completed',
+  delayed: {
+    label: 'Delayed',
+    dotClass: 'bg-status-delayed',
+    textClass: 'text-status-delayed',
+    bgClass: 'bg-status-delayed/10',
+  },
+  completed: {
     label: 'Completed',
     dotClass: 'bg-status-completed',
-    borderClass: 'border-t-status-completed',
+    textClass: 'text-status-completed',
+    bgClass: 'bg-status-completed/10',
   },
-]
+}
 
 export const PRIORITY_DOT_CLASS = {
   low: 'bg-status-scheduled',
@@ -63,7 +73,7 @@ export const canChangeStatus = (task, currentUserId = CURRENT_USER_ID) => task.a
 
 export const formatShortDate = (dateKey) => {
   const [year, month, day] = dateKey.split('-').map(Number)
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export const initialsOf = (name) =>
@@ -73,3 +83,5 @@ export const initialsOf = (name) =>
     .join('')
     .slice(0, 2)
     .toUpperCase()
+
+export const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)

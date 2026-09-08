@@ -6,6 +6,7 @@ export const editTaskSchema = z
     title: z.string().min(1, 'Task title is required'),
     description: z.string().optional(),
     attachment: z.any().optional(),
+    broker: z.string().optional(),
     assignedTo: z.string().min(1, 'Please select a staff member'),
     timeline: z.string().min(1, 'Please select a timeline'),
     customDates: z.array(z.object({ date: z.string() })).optional(),

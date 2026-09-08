@@ -7,6 +7,7 @@ import CreateTask from '@/pages/admin/CreateTask'
 import TaskBoard from '@/pages/admin/TaskBoard'
 import StaffDirectory from '@/pages/admin/StaffDirectory'
 import Schedule from '@/pages/admin/Schedule'
+import PrivateNotes from '@/pages/PrivateNotes'
 import NotFound from '@/pages/errors/NotFound'
 import Unauthorized from '@/pages/errors/Unauthorized'
 import ProtectedRoute from '@/routes/ProtectedRoute'
@@ -30,6 +31,7 @@ export default function AppRoutes() {
             <Route path={ROUTES.ADMIN_TASK_BOARD} element={<TaskBoard />} />
             <Route path={ROUTES.ADMIN_STAFF} element={<StaffDirectory />} />
             <Route path={ROUTES.ADMIN_SCHEDULE} element={<Schedule />} />
+            <Route path={ROUTES.PRIVATE_NOTES} element={<PrivateNotes />} />
           </Route>
         </Route>
       </Route>

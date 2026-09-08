@@ -19,6 +19,7 @@ export default function EditTaskModal({ task, onClose, onSave }) {
     defaultValues: {
       title: task.title,
       description: task.description ?? '',
+      broker: task.broker ?? '',
       assignedTo: task.assignedTo,
       timeline: task.timeline,
       customDates: task.customDates ?? [],
@@ -112,6 +113,19 @@ export default function EditTaskModal({ task, onClose, onSave }) {
               type="file"
               className="block w-full cursor-pointer rounded-lg border border-border-light bg-surface-subtle text-body-md text-on-surface-variant file:mr-4 file:rounded-lg file:border-0 file:bg-secondary-container file:px-4 file:py-2 file:text-body-md file:font-semibold file:text-on-secondary-container hover:file:bg-secondary-fixed"
               {...register('attachment')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="editTaskBroker" className="block text-label-bold font-bold text-on-surface">
+              Broker
+            </label>
+            <input
+              id="editTaskBroker"
+              type="text"
+              placeholder="e.g., Broker or agency name"
+              className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+              {...register('broker')}
             />
           </div>
 

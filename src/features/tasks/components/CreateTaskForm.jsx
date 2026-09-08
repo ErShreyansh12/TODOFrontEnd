@@ -20,6 +20,7 @@ export default function CreateTaskForm() {
     defaultValues: {
       title: '',
       description: '',
+      broker: '',
       assignedTo: '',
       timeline: '',
       customDates: [],
@@ -75,6 +76,19 @@ export default function CreateTaskForm() {
             type="file"
             className="block w-full cursor-pointer rounded-lg border border-border-light bg-surface-subtle text-body-md text-on-surface-variant file:mr-4 file:rounded-lg file:border-0 file:bg-secondary-container file:px-4 file:py-2 file:text-body-md file:font-semibold file:text-on-secondary-container hover:file:bg-secondary-fixed"
             {...register('attachment')}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="broker" className="block text-label-bold font-bold text-on-surface">
+            Broker
+          </label>
+          <input
+            id="broker"
+            type="text"
+            placeholder="e.g., Broker or agency name"
+            className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+            {...register('broker')}
           />
         </div>
       </div>

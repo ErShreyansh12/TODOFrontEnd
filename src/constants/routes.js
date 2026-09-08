@@ -5,6 +5,7 @@ export const ROUTES = Object.freeze({
   ADMIN_TASK_BOARD: '/admin/tasks',
   ADMIN_STAFF: '/admin/staff',
   ADMIN_SCHEDULE: '/admin/schedule',
+  PRIVATE_NOTES: '/notes',
   STAFF_DASHBOARD: '/staff/dashboard',
   UNAUTHORIZED: '/unauthorized',
   NOT_FOUND: '/404',

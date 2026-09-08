@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: 'Task Board', icon: 'assignment', to: ROUTES.ADMIN_TASK_BOARD },
   { label: 'Staff Directory', icon: 'group', to: ROUTES.ADMIN_STAFF },
   { label: 'Schedule', icon: 'calendar_month', to: ROUTES.ADMIN_SCHEDULE },
-  { label: 'Private Notes', icon: 'sticky_note_2' },
+  { label: 'Private Notes', icon: 'lock', to: ROUTES.PRIVATE_NOTES },
   { label: 'Reports', icon: 'analytics' },
 ]
 

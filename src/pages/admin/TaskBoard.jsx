@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import TaskColumn from '@/features/tasks/components/TaskColumn'
+import TaskTable from '@/features/tasks/components/TaskTable'
 import EditTaskModal from '@/features/tasks/components/EditTaskModal'
 import { INITIAL_TASKS } from '@/features/tasks/data/board-tasks.data'
-import { COLUMN_DEFS, CURRENT_USER_ID, getDisplayStatus } from '@/features/tasks/utils/task.utils'
+import { CURRENT_USER_ID, STATUS_META, getDisplayStatus } from '@/features/tasks/utils/task.utils'
 import { ROUTES } from '@/constants/routes'
 
 const OWNER_FILTERS = [
@@ -12,11 +12,17 @@ const OWNER_FILTERS = [
   { key: 'staff', label: 'Staff Tasks' },
 ]
 
+const STATUS_FILTER_OPTIONS = [
+  { key: 'all', label: 'All Statuses' },
+  ...Object.entries(STATUS_META).map(([key, meta]) => ({ key, label: meta.label })),
+]
+
 export default function TaskBoard() {
   const navigate = useNavigate()
   const [tasks, setTasks] = useState(INITIAL_TASKS)
   const [search, setSearch] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [editingTask, setEditingTask] = useState(null)
 
   const mineCount = useMemo(() => tasks.filter((task) => task.assignedTo === CURRENT_USER_ID).length, [tasks])
@@ -28,17 +34,10 @@ export default function TaskBoard() {
       if (query && !task.title.toLowerCase().includes(query)) return false
       if (ownerFilter === 'mine' && task.assignedTo !== CURRENT_USER_ID) return false
       if (ownerFilter === 'staff' && task.assignedTo === CURRENT_USER_ID) return false
+      if (statusFilter !== 'all' && getDisplayStatus(task) !== statusFilter) return false
       return true
     })
-  }, [tasks, search, ownerFilter])
-
-  const tasksByColumn = useMemo(() => {
-    const buckets = { todo: [], in_progress: [], delayed: [], completed: [] }
-    filteredTasks.forEach((task) => {
-      buckets[getDisplayStatus(task)].push(task)
-    })
-    return buckets
-  }, [filteredTasks])
+  }, [tasks, search, ownerFilter, statusFilter])
 
   const handleStatusChange = (taskId, status) => {
     setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status } : task)))
@@ -55,7 +54,7 @@ export default function TaskBoard() {
           <h2 className="mb-unit-xs font-[var(--font-headline)] text-headline-lg-mobile text-on-surface md:text-display-lg">
             Task Board
           </h2>
-          <p className="text-body-lg text-on-surface-variant">Your tasks and your team's, grouped by status.</p>
+          <p className="text-body-lg text-on-surface-variant">Your tasks and your team's, all in one place.</p>
         </div>
         <button
           type="button"
@@ -75,6 +74,17 @@ export default function TaskBoard() {
           placeholder="Search tasks by title..."
           className="h-9 min-w-[200px] flex-1 rounded-lg border border-border-light bg-surface-container-lowest px-4 text-body-md text-on-surface shadow-sm transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
         />
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          className="h-9 rounded-lg border border-border-light bg-surface-container-lowest px-3 text-body-md text-on-surface shadow-sm transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+        >
+          {STATUS_FILTER_OPTIONS.map((option) => (
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
+          ))}
+        </select>
         <div className="flex items-center gap-1 rounded-lg border border-border-light bg-surface-container-lowest p-1 shadow-sm">
           {OWNER_FILTERS.map((filter) => (
             <button
@@ -107,17 +117,11 @@ export default function TaskBoard() {
         </span>
       </div>
 
-      <div className="-mx-margin-mobile flex snap-x snap-mandatory gap-unit-md overflow-x-auto px-margin-mobile pb-2 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-gutter lg:overflow-visible lg:px-0">
-        {COLUMN_DEFS.map((def) => (
-          <TaskColumn
-            key={def.key}
-            def={def}
-            tasks={tasksByColumn[def.key]}
-            onEdit={setEditingTask}
-            onStatusChange={handleStatusChange}
-          />
-        ))}
-      </div>
+      <TaskTable tasks={filteredTasks} onEdit={setEditingTask} onStatusChange={handleStatusChange} />
+
+      <p className="text-label-md text-on-surface-variant">
+        Showing {filteredTasks.length} of {tasks.length} tasks
+      </p>
 
       {editingTask && (
         <EditTaskModal task={editingTask} onClose={() => setEditingTask(null)} onSave={handleSaveEdit} />
