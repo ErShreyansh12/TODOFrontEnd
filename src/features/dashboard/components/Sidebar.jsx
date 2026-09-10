@@ -2,15 +2,23 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { ROUTES } from '@/constants/routes'
+import { Role } from '@/constants/roles'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 
-const NAV_LINKS = [
+const ADMIN_NAV_LINKS = [
   { label: 'Dashboard', icon: 'dashboard', to: ROUTES.ADMIN_DASHBOARD },
   { label: 'Task Board', icon: 'assignment', to: ROUTES.ADMIN_TASK_BOARD },
   { label: 'Staff Directory', icon: 'group', to: ROUTES.ADMIN_STAFF },
   { label: 'Schedule', icon: 'calendar_month', to: ROUTES.ADMIN_SCHEDULE },
   { label: 'Private Notes', icon: 'lock', to: ROUTES.PRIVATE_NOTES },
-  { label: 'Reports', icon: 'analytics' },
+  { label: 'Broadcast / Notice', icon: 'campaign', to: ROUTES.ADMIN_BROADCAST },
+]
+
+const STAFF_NAV_LINKS = [
+  { label: 'Dashboard', icon: 'dashboard', to: ROUTES.STAFF_DASHBOARD },
+  { label: 'Task Board', icon: 'assignment', to: ROUTES.STAFF_TASK_BOARD },
+  { label: 'Private Notes', icon: 'lock', to: ROUTES.PRIVATE_NOTES },
+  { label: 'Profile', icon: 'person', to: ROUTES.STAFF_PROFILE },
 ]
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
@@ -18,6 +26,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
+  const isStaff = user?.role === Role.STAFF
+  const navLinks = isStaff ? STAFF_NAV_LINKS : ADMIN_NAV_LINKS
 
   const handleConfirmLogout = () => {
     logout()
@@ -54,10 +64,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           <div className={`mb-unit-lg flex items-center gap-unit-sm ${isCollapsed ? 'md:justify-center' : 'justify-between'}`}>
             <div className={`flex min-w-0 items-center gap-unit-sm ${isCollapsed ? 'md:justify-center' : ''}`}>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-primary-container bg-secondary-container text-on-secondary-container">
-                <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
+                <span className="material-symbols-outlined text-xl">{isStaff ? 'badge' : 'admin_panel_settings'}</span>
               </div>
               <div className={`min-w-0 ${isCollapsed ? 'md:hidden' : ''}`}>
-                <h1 className="truncate font-[var(--font-headline)] text-headline-sm text-primary">Admin Portal</h1>
+                <h1 className="truncate font-[var(--font-headline)] text-headline-sm text-primary">
+                  {isStaff ? 'Staff Portal' : 'Admin Portal'}
+                </h1>
                 <p className="truncate text-label-md text-on-surface-variant">{user?.name ?? 'Management Suite'}</p>
               </div>
             </div>
@@ -70,25 +82,27 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               <span className="material-symbols-outlined">close</span>
             </button>
           </div>
-          <button
-            type="button"
-            title="Create New Task"
-            onClick={() => {
-              navigate(ROUTES.ADMIN_TASKS_CREATE)
-              onClose()
-            }}
-            className={`flex w-full items-center justify-center gap-2 rounded-lg bg-primary-container py-unit-sm text-label-bold font-bold tracking-[0.05em] text-on-primary uppercase transition-all hover:bg-primary ${
-              isCollapsed ? 'md:mx-auto md:h-10 md:w-10 md:rounded-full md:p-0' : 'px-unit-md'
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg">add</span>
-            <span className={`whitespace-nowrap ${isCollapsed ? 'md:hidden' : ''}`}>Create New Task</span>
-          </button>
+          {!isStaff && (
+            <button
+              type="button"
+              title="Create New Task"
+              onClick={() => {
+                navigate(ROUTES.ADMIN_TASKS_CREATE)
+                onClose()
+              }}
+              className={`flex w-full items-center justify-center gap-2 rounded-lg bg-primary-container py-unit-sm text-label-bold font-bold tracking-[0.05em] text-on-primary uppercase transition-all hover:bg-primary ${
+                isCollapsed ? 'md:mx-auto md:h-10 md:w-10 md:rounded-full md:p-0' : 'px-unit-md'
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              <span className={`whitespace-nowrap ${isCollapsed ? 'md:hidden' : ''}`}>Create New Task</span>
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-unit-sm py-unit-md">
           <ul className="space-y-unit-sm">
-            {NAV_LINKS.map((link) =>
+            {navLinks.map((link) =>
               link.to ? (
                 <li key={link.label}>
                   <NavLink
@@ -148,7 +162,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       {isLogoutConfirmOpen && (
         <ConfirmDialog
           title="Heading out already?"
-          description="You'll be signed out of the admin portal and need to log in again to pick up where you left off."
+          description="You'll be signed out and need to log in again to pick up where you left off."
           confirmLabel="Logout"
           cancelLabel="Cancel"
           confirmIcon="logout"

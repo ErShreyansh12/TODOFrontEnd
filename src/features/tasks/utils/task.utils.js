@@ -1,4 +1,5 @@
 import { STAFF_OPTIONS } from '@/features/tasks/data/task-options.data'
+import { STAFF_MEMBERS } from '@/features/staff/data/staff.data'
 
 export const CURRENT_USER_ID = 'admin'
 
@@ -41,14 +42,22 @@ export const PRIORITY_DOT_CLASS = {
   high: 'bg-status-delayed',
 }
 
-export const STAFF_NAME_MAP = Object.fromEntries(
-  STAFF_OPTIONS.filter((option) => option.value !== CURRENT_USER_ID).map((option) => [option.value, option.label]),
-)
+export const STAFF_NAME_MAP = {
+  ...Object.fromEntries(
+    STAFF_OPTIONS.filter((option) => option.value !== CURRENT_USER_ID).map((option) => [option.value, option.label]),
+  ),
+  ...Object.fromEntries(STAFF_MEMBERS.map((member) => [member.id, `${member.firstName} ${member.lastName}`])),
+}
+
+const DIRECTORY_AVATAR_PALETTE = ['#3b82f6', '#a43a3a', '#8b5cf6', '#0ea5e9', '#ea580c']
 
 export const STAFF_AVATAR_COLOR = {
   rahul: '#006c49',
   amit: '#3f465c',
   neha: '#10b981',
+  ...Object.fromEntries(
+    STAFF_MEMBERS.map((member, index) => [member.id, DIRECTORY_AVATAR_PALETTE[index % DIRECTORY_AVATAR_PALETTE.length]]),
+  ),
 }
 
 const toDateKey = (date) => {

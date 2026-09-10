@@ -5,8 +5,12 @@ export const ROUTES = Object.freeze({
   ADMIN_TASK_BOARD: '/admin/tasks',
   ADMIN_STAFF: '/admin/staff',
   ADMIN_SCHEDULE: '/admin/schedule',
+  ADMIN_BROADCAST: '/admin/broadcast',
+  ADMIN_BROADCAST_CREATE: '/admin/broadcast/create',
   PRIVATE_NOTES: '/notes',
   STAFF_DASHBOARD: '/staff/dashboard',
+  STAFF_TASK_BOARD: '/staff/tasks',
+  STAFF_PROFILE: '/staff/profile',
   UNAUTHORIZED: '/unauthorized',
   NOT_FOUND: '/404',
 })

@@ -65,6 +65,15 @@ export default function TaskTable({ tasks, onEdit, onStatusChange }) {
                       {overdue && <span className="material-symbols-outlined text-[16px]">schedule</span>}
                       {formatShortDate(task.dueDate)}
                     </span>
+                    {overdue && task.delayReason && (
+                      <p
+                        title={task.delayReason}
+                        className="mt-1 flex cursor-help items-center gap-1 text-[11px] font-medium text-on-surface-variant"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">chat_bubble</span>
+                        Reason noted
+                      </p>
+                    )}
                   </td>
                   <td className="p-unit-md">
                     <span className="flex items-center gap-2 whitespace-nowrap">

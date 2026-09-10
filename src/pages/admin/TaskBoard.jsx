@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TaskTable from '@/features/tasks/components/TaskTable'
 import EditTaskModal from '@/features/tasks/components/EditTaskModal'
-import { INITIAL_TASKS } from '@/features/tasks/data/board-tasks.data'
+import { useTaskStore } from '@/features/tasks/store/taskStore'
 import { CURRENT_USER_ID, STATUS_META, getDisplayStatus } from '@/features/tasks/utils/task.utils'
 import { ROUTES } from '@/constants/routes'
 
@@ -19,7 +19,9 @@ const STATUS_FILTER_OPTIONS = [
 
 export default function TaskBoard() {
   const navigate = useNavigate()
-  const [tasks, setTasks] = useState(INITIAL_TASKS)
+  const tasks = useTaskStore((state) => state.tasks)
+  const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus)
+  const updateTask = useTaskStore((state) => state.updateTask)
   const [search, setSearch] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -40,11 +42,11 @@ export default function TaskBoard() {
   }, [tasks, search, ownerFilter, statusFilter])
 
   const handleStatusChange = (taskId, status) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status } : task)))
+    updateTaskStatus(taskId, status)
   }
 
   const handleSaveEdit = (taskId, values) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...values } : task)))
+    updateTask(taskId, values)
   }
 
   return (
