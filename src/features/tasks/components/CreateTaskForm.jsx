@@ -1,18 +1,34 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { createTaskSchema } from '@/features/tasks/schemas/task.schema'
-import { STAFF_OPTIONS, TIMELINE_OPTIONS, STATUS_OPTIONS, PRIORITY_OPTIONS } from '@/features/tasks/data/task-options.data'
+import {
+  ADMIN_ASSIGNEE_ID,
+  ADMIN_ASSIGNEE_OPTION,
+  TIMELINE_OPTIONS,
+  STATUS_OPTIONS,
+  PRIORITY_OPTIONS,
+} from '@/features/tasks/data/task-options.data'
+import { useStaffOptions } from '@/hooks/useStaff'
+import { useCreateTask } from '@/hooks/useTasks'
+import { useTaskStore } from '@/features/tasks/store/taskStore'
+import { mapApiTask } from '@/features/tasks/utils/task.utils'
 import { ROUTES } from '@/constants/routes'
+import Toast from '@/components/common/Toast'
 import SelectField from '@/features/tasks/components/SelectField'
 import CustomDatesField from '@/features/tasks/components/CustomDatesField'
 
+const ATTACHMENT_TYPES = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg'
+
 export default function CreateTaskForm() {
   const navigate = useNavigate()
+  const createTask = useCreateTask()
+  const addTask = useTaskStore((state) => state.addTask)
+  const [toast, setToast] = useState(null)
   const {
     register,
     handleSubmit,
-    control,
     watch,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -23,18 +39,40 @@ export default function CreateTaskForm() {
       broker: '',
       assignedTo: '',
       timeline: '',
+      time: '',
       customDates: [],
       priority: 'medium',
-      status: 'pending',
+      status: 'todo',
     },
   })
 
   const timeline = watch('timeline')
+  const { data: staffOptions = [], isLoading: staffLoading, isError: staffError } = useStaffOptions()
+  const assigneeOptions = [ADMIN_ASSIGNEE_OPTION, ...staffOptions]
 
-  const onSubmit = (values) => {
-    // TODO: wire up to the tasks API once it exists — for now the task is only logged.
-    console.info('Task created', values)
-    navigate(ROUTES.ADMIN_DASHBOARD)
+  const onSubmit = async (values) => {
+    const assignToAdmin = values.assignedTo === ADMIN_ASSIGNEE_OPTION.value
+
+    try {
+      const response = await createTask.mutateAsync({
+        title: values.title,
+        description: values.description,
+        broker: values.broker,
+        assigneeType: assignToAdmin ? 'admin' : 'staff',
+        assigneeId: assignToAdmin ? ADMIN_ASSIGNEE_ID : values.assignedTo,
+        timeline: values.timeline,
+        time: values.time,
+        customDates: values.timeline === 'custom' ? values.customDates.filter((entry) => entry.date) : undefined,
+        priority: values.priority,
+        status: values.status,
+        attachment: values.attachment?.[0],
+      })
+      if (response?.data?.task) addTask(mapApiTask(response.data.task))
+      setToast({ message: 'Task Created Successfully.', tone: 'success' })
+      setTimeout(() => navigate(ROUTES.ADMIN_DASHBOARD), 1200)
+    } catch {
+      // surfaced below via createTask.isError
+    }
   }
 
   return (
@@ -74,6 +112,7 @@ export default function CreateTaskForm() {
           <input
             id="attachment"
             type="file"
+            accept={ATTACHMENT_TYPES}
             className="block w-full cursor-pointer rounded-lg border border-border-light bg-surface-subtle text-body-md text-on-surface-variant file:mr-4 file:rounded-lg file:border-0 file:bg-secondary-container file:px-4 file:py-2 file:text-body-md file:font-semibold file:text-on-secondary-container hover:file:bg-secondary-fixed"
             {...register('attachment')}
           />
@@ -99,9 +138,13 @@ export default function CreateTaskForm() {
         <SelectField
           label="Assigned To"
           required
-          placeholder="Select Staff Member"
-          options={STAFF_OPTIONS}
-          error={errors.assignedTo?.message}
+          placeholder={staffLoading ? 'Loading staff…' : 'Select Staff Member'}
+          options={assigneeOptions}
+          disabled={staffLoading}
+          error={
+            errors.assignedTo?.message ??
+            (staffError ? "Couldn't load staff members. You can still assign the task to yourself." : undefined)
+          }
           {...register('assignedTo')}
         />
         <SelectField
@@ -114,7 +157,26 @@ export default function CreateTaskForm() {
         />
       </div>
 
-      {timeline === 'custom' && <CustomDatesField control={control} register={register} errors={errors} />}
+      {timeline && (
+        <div className="grid grid-cols-1 gap-unit-lg md:grid-cols-2">
+          {timeline === 'custom' && <CustomDatesField register={register} errors={errors} />}
+          <div className="space-y-2">
+            <label htmlFor="taskTime" className="block text-label-bold font-bold text-on-surface">
+              Time <span className="text-error">*</span>
+            </label>
+            <input
+              id="taskTime"
+              type="time"
+              className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+              {...register('time')}
+            />
+            <p className="text-label-md text-on-surface-variant">
+              Time for {TIMELINE_OPTIONS.find((option) => option.value === timeline)?.label}
+            </p>
+            {errors.time && <p className="text-sm text-error">{errors.time.message}</p>}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-unit-lg md:grid-cols-2">
         <div className="space-y-3">
@@ -138,6 +200,12 @@ export default function CreateTaskForm() {
         />
       </div>
 
+      {createTask.isError && (
+        <p className="text-sm text-error">
+          {createTask.error?.response?.data?.message ?? 'Unable to create the task. Please try again.'}
+        </p>
+      )}
+
       <div className="flex flex-col items-center justify-end gap-4 border-t border-border-light pt-unit-lg md:flex-row">
         <button
           type="button"
@@ -148,13 +216,15 @@ export default function CreateTaskForm() {
         </button>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || createTask.isPending || createTask.isSuccess}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-container px-6 py-2.5 text-label-bold font-bold text-on-primary shadow-sm transition-colors hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 md:w-auto"
         >
           <span className="material-symbols-outlined text-[18px]">check</span>
-          {isSubmitting ? 'Creating…' : 'Create Task'}
+          {isSubmitting || createTask.isPending ? 'Creating…' : 'Create Task'}
         </button>
       </div>
+
+      {toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
     </form>
   )
 }

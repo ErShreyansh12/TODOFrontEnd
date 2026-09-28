@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import TaskTable from '@/features/tasks/components/TaskTable'
 import EditTaskModal from '@/features/tasks/components/EditTaskModal'
-import { useTaskStore } from '@/features/tasks/store/taskStore'
-import { CURRENT_USER_ID, STATUS_META, getDisplayStatus } from '@/features/tasks/utils/task.utils'
+import { useSyncedTasks } from '@/hooks/useTasks'
+import { STATUS_META, getDisplayStatus, isAdminAssignee } from '@/features/tasks/utils/task.utils'
 import { ROUTES } from '@/constants/routes'
 
 const OWNER_FILTERS = [
@@ -19,35 +19,33 @@ const STATUS_FILTER_OPTIONS = [
 
 export default function TaskBoard() {
   const navigate = useNavigate()
-  const tasks = useTaskStore((state) => state.tasks)
-  const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus)
-  const updateTask = useTaskStore((state) => state.updateTask)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const staffFilter = searchParams.get('staff')
+  const { tasks, isLoading, isError } = useSyncedTasks()
   const [search, setSearch] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [editingTask, setEditingTask] = useState(null)
 
-  const mineCount = useMemo(() => tasks.filter((task) => task.assignedTo === CURRENT_USER_ID).length, [tasks])
+  const mineCount = useMemo(() => tasks.filter((task) => isAdminAssignee(task)).length, [tasks])
   const staffCount = tasks.length - mineCount
+
+  const staffFilterName = useMemo(
+    () => (staffFilter ? tasks.find((task) => task.assignee?.id === staffFilter)?.assignee?.name : null),
+    [tasks, staffFilter],
+  )
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase()
     return tasks.filter((task) => {
       if (query && !task.title.toLowerCase().includes(query)) return false
-      if (ownerFilter === 'mine' && task.assignedTo !== CURRENT_USER_ID) return false
-      if (ownerFilter === 'staff' && task.assignedTo === CURRENT_USER_ID) return false
+      if (staffFilter && task.assignee?.id !== staffFilter) return false
+      if (ownerFilter === 'mine' && !isAdminAssignee(task)) return false
+      if (ownerFilter === 'staff' && isAdminAssignee(task)) return false
       if (statusFilter !== 'all' && getDisplayStatus(task) !== statusFilter) return false
       return true
     })
-  }, [tasks, search, ownerFilter, statusFilter])
-
-  const handleStatusChange = (taskId, status) => {
-    updateTaskStatus(taskId, status)
-  }
-
-  const handleSaveEdit = (taskId, values) => {
-    updateTask(taskId, values)
-  }
+  }, [tasks, search, ownerFilter, statusFilter, staffFilter])
 
   return (
     <>
@@ -106,27 +104,36 @@ export default function TaskBoard() {
             </button>
           ))}
         </div>
+        {staffFilter && (
+          <span className="inline-flex items-center gap-2 rounded-full bg-secondary-container py-1.5 pr-1.5 pl-3 text-label-md font-bold text-on-secondary-container">
+            Assignee: {staffFilterName ?? staffFilter}
+            <button
+              type="button"
+              onClick={() => setSearchParams({}, { replace: true })}
+              aria-label="Clear assignee filter"
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-on-secondary-container/15 hover:bg-on-secondary-container/25"
+            >
+              <span className="material-symbols-outlined text-[14px]">close</span>
+            </button>
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-unit-lg gap-y-1 rounded-lg border border-dashed border-border-light bg-surface-container-lowest px-unit-md py-unit-sm text-label-md text-on-surface-variant">
-        <span className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[15px]">check_circle</span>
-          You set the status only on tasks assigned to <strong className="text-on-surface">you</strong>.
-        </span>
         <span className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-[15px]">lock</span>
           Staff tasks lock for editing once past <strong className="text-on-surface">To Do</strong>.
         </span>
       </div>
 
-      <TaskTable tasks={filteredTasks} onEdit={setEditingTask} onStatusChange={handleStatusChange} />
+      <TaskTable tasks={filteredTasks} onEdit={setEditingTask} isLoading={isLoading} isError={isError} />
 
       <p className="text-label-md text-on-surface-variant">
         Showing {filteredTasks.length} of {tasks.length} tasks
       </p>
 
       {editingTask && (
-        <EditTaskModal task={editingTask} onClose={() => setEditingTask(null)} onSave={handleSaveEdit} />
+        <EditTaskModal task={editingTask} onClose={() => setEditingTask(null)} />
       )}
     </>
   )

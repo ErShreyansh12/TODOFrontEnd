@@ -9,8 +9,9 @@ export const createTaskSchema = z
     broker: z.string().optional(),
     assignedTo: z.string().min(1, 'Please select a staff member'),
     timeline: z.string().min(1, 'Please select a timeline'),
+    time: z.string().min(1, 'Please select a time'),
     customDates: z.array(z.object({ date: z.string() })).optional(),
     priority: z.enum(['low', 'medium', 'high']),
-    status: z.enum(['pending', 'scheduled']),
+    status: z.enum(['todo', 'in_progress', 'completed']),
   })
   .superRefine(validateCustomDates)

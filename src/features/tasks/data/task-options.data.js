@@ -1,9 +1,5 @@
-export const STAFF_OPTIONS = [
-  { value: 'admin', label: 'Assign To Admin' },
-  { value: 'rahul', label: 'Rahul Sharma' },
-  { value: 'amit', label: 'Amit Patel' },
-  { value: 'neha', label: 'Neha Gupta' },
-]
+export const ADMIN_ASSIGNEE_OPTION = { value: 'admin', label: 'Assign To Admin' }
+export const ADMIN_ASSIGNEE_ID = '6aa4036fac73e628c27d3554'
 
 export const TIMELINE_OPTIONS = [
   { value: 'daily', label: 'Daily (Mon-Fri)' },
@@ -15,8 +11,9 @@ export const TIMELINE_OPTIONS = [
 ]
 
 export const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'todo', label: 'To Do' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
 ]
 
 export const PRIORITY_OPTIONS = [

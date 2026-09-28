@@ -1,14 +1,40 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import NotesList from '@/features/notes/components/NotesList'
 import NoteEditor from '@/features/notes/components/NoteEditor'
-import { INITIAL_NOTES } from '@/features/notes/data/notes.data'
+import Toast from '@/components/common/Toast'
+import { useNotesList, useCreateNote, useToggleNotePin, useToggleNoteArchive, useDeleteNote } from '@/hooks/useNotes'
 import { stripHtml } from '@/features/notes/utils/notes.utils'
 
+const mapNote = (note) => ({
+  id: note.id ?? note._id,
+  title: note.title ?? '',
+  contentHtml: note.contentHtml ?? '',
+  pinned: note.pinned ?? false,
+  archived: note.archived ?? false,
+  updatedAt: note.updatedAt ?? note.createdAt ?? new Date().toISOString(),
+  isNew: false,
+})
+
 export default function PrivateNotes() {
-  const [notes, setNotes] = useState(INITIAL_NOTES)
-  const [selectedNoteId, setSelectedNoteId] = useState(INITIAL_NOTES[0]?.id ?? null)
+  const { data, isLoading, isError, error } = useNotesList()
+  const createNote = useCreateNote()
+  const toggleNotePin = useToggleNotePin()
+  const toggleNoteArchive = useToggleNoteArchive()
+  const deleteNote = useDeleteNote()
+  const creatingRef = useRef(new Set())
+  const [notes, setNotes] = useState([])
+  const [selectedNoteId, setSelectedNoteId] = useState(null)
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    if (!data?.data) return
+    const merged = [...data.data.all, ...data.data.archive].map(mapNote)
+    const deduped = Array.from(new Map(merged.map((note) => [note.id, note])).values())
+    setNotes(deduped)
+    setSelectedNoteId((current) => current ?? deduped[0]?.id ?? null)
+  }, [data])
 
   const counts = useMemo(
     () => ({
@@ -46,6 +72,7 @@ export default function PrivateNotes() {
       pinned: false,
       archived: false,
       updatedAt: new Date().toISOString(),
+      isNew: true,
     }
     setNotes((prev) => [newNote, ...prev])
     setSelectedNoteId(newNote.id)
@@ -53,26 +80,121 @@ export default function PrivateNotes() {
     setSearch('')
   }
 
-  const handleSaveNote = (id, { title, contentHtml }) => {
-    setNotes((prev) =>
-      prev.map((note) => (note.id === id ? { ...note, title, contentHtml, updatedAt: new Date().toISOString() } : note)),
-    )
+  const handleSaveNote = async (id, { title, contentHtml }) => {
+    const note = notes.find((item) => item.id === id)
+    if (!note) return
+
+    if (!note.isNew) {
+      setNotes((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, title, contentHtml, updatedAt: new Date().toISOString() } : item)),
+      )
+      return
+    }
+
+    if (creatingRef.current.has(id)) {
+      setNotes((prev) => prev.map((item) => (item.id === id ? { ...item, title, contentHtml } : item)))
+      return
+    }
+
+    creatingRef.current.add(id)
+    try {
+      const response = await createNote.mutateAsync({ title, contentHtml })
+      const created = response.data.note
+      setNotes((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                id: created.id,
+                title: created.title,
+                contentHtml: created.contentHtml,
+                updatedAt: created.updatedAt,
+                isNew: false,
+              }
+            : item,
+        ),
+      )
+      setSelectedNoteId((current) => (current === id ? created.id : current))
+    } catch (err) {
+      setToast({
+        message: err?.response?.data?.message ?? 'Unable to save note. Please try again.',
+        tone: 'error',
+      })
+      throw err
+    } finally {
+      creatingRef.current.delete(id)
+    }
   }
 
-  const handleDeleteNote = (id) => {
-    const remaining = notes.filter((note) => note.id !== id)
+  const handleDeleteNote = async (id) => {
+    const note = notes.find((item) => item.id === id)
+    if (!note) return
+
+    if (!note.isNew) {
+      try {
+        await deleteNote.mutateAsync(id)
+      } catch (err) {
+        setToast({
+          message: err?.response?.data?.message ?? 'Unable to delete note. Please try again.',
+          tone: 'error',
+        })
+        return
+      }
+    }
+
+    const remaining = notes.filter((item) => item.id !== id)
     setNotes(remaining)
     if (selectedNoteId === id) {
       setSelectedNoteId(remaining[0]?.id ?? null)
     }
   }
 
-  const handleTogglePin = (id) => {
-    setNotes((prev) => prev.map((note) => (note.id === id ? { ...note, pinned: !note.pinned } : note)))
+  const handleTogglePin = async (id) => {
+    const note = notes.find((item) => item.id === id)
+    if (!note) return
+
+    if (note.isNew) {
+      setNotes((prev) => prev.map((item) => (item.id === id ? { ...item, pinned: !item.pinned } : item)))
+      return
+    }
+
+    try {
+      const response = await toggleNotePin.mutateAsync(id)
+      const updated = response.data.note
+      setNotes((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, pinned: updated.pinned, updatedAt: updated.updatedAt } : item)),
+      )
+    } catch (err) {
+      setToast({
+        message: err?.response?.data?.message ?? 'Unable to update pin status. Please try again.',
+        tone: 'error',
+      })
+    }
   }
 
-  const handleToggleArchive = (id) => {
-    setNotes((prev) => prev.map((note) => (note.id === id ? { ...note, archived: !note.archived } : note)))
+  const handleToggleArchive = async (id) => {
+    const note = notes.find((item) => item.id === id)
+    if (!note) return
+
+    if (note.isNew) {
+      setNotes((prev) => prev.map((item) => (item.id === id ? { ...item, archived: !item.archived } : item)))
+      return
+    }
+
+    try {
+      const response = await toggleNoteArchive.mutateAsync(id)
+      const updated = response.data.note
+      setNotes((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, archived: updated.archived, updatedAt: updated.updatedAt } : item,
+        ),
+      )
+    } catch (err) {
+      setToast({
+        message: err?.response?.data?.message ?? 'Unable to update archive status. Please try again.',
+        tone: 'error',
+      })
+    }
   }
 
   return (
@@ -116,23 +238,40 @@ export default function PrivateNotes() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-unit-lg lg:grid-cols-12">
-        <NotesList
-          notes={filteredNotes}
-          counts={counts}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          selectedNoteId={selectedNoteId}
-          onSelectNote={setSelectedNoteId}
-        />
-        <NoteEditor
-          note={selectedNote}
-          onSave={handleSaveNote}
-          onDelete={handleDeleteNote}
-          onTogglePin={handleTogglePin}
-          onToggleArchive={handleToggleArchive}
-        />
-      </div>
+      {isLoading && (
+        <div className="flex items-center justify-center gap-unit-sm rounded-xl bg-surface-container-lowest p-unit-xl text-center text-body-md text-on-surface-variant shadow-sm">
+          <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+          Loading your notes…
+        </div>
+      )}
+
+      {isError && !isLoading && (
+        <div className="rounded-xl bg-surface-container-lowest p-unit-xl text-center text-body-md text-error shadow-sm">
+          {error?.response?.data?.message ?? 'Unable to load your notes. Please try again.'}
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <div className="grid grid-cols-1 items-start gap-unit-lg lg:grid-cols-12">
+          <NotesList
+            notes={filteredNotes}
+            counts={counts}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            selectedNoteId={selectedNoteId}
+            onSelectNote={setSelectedNoteId}
+          />
+          <NoteEditor
+            note={selectedNote}
+            onSave={handleSaveNote}
+            onDelete={handleDeleteNote}
+            onTogglePin={handleTogglePin}
+            onToggleArchive={handleToggleArchive}
+          />
+        </div>
+      )}
+
+      {toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
     </>
   )
 }

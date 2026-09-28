@@ -2,16 +2,20 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { editTaskSchema } from '@/features/tasks/schemas/edit-task.schema'
-import { STAFF_OPTIONS, TIMELINE_OPTIONS, PRIORITY_OPTIONS } from '@/features/tasks/data/task-options.data'
+import { TIMELINE_OPTIONS, PRIORITY_OPTIONS } from '@/features/tasks/data/task-options.data'
+import { useUpdateTask } from '@/hooks/useTasks'
+import { useTaskStore } from '@/features/tasks/store/taskStore'
+import { attachmentFileName, isAdminAssignee, mapApiTask } from '@/features/tasks/utils/task.utils'
 import SelectField from '@/features/tasks/components/SelectField'
 import CustomDatesField from '@/features/tasks/components/CustomDatesField'
 
-export default function EditTaskModal({ task, onClose, onSave }) {
-  const [attachmentRemoved, setAttachmentRemoved] = useState(false)
+export default function EditTaskModal({ task, onClose }) {
+  const updateTask = useUpdateTask()
+  const updateTaskLocal = useTaskStore((state) => state.updateTask)
+  const [apiError, setApiError] = useState(null)
   const {
     register,
     handleSubmit,
-    control,
     watch,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -20,27 +24,57 @@ export default function EditTaskModal({ task, onClose, onSave }) {
       title: task.title,
       description: task.description ?? '',
       broker: task.broker ?? '',
-      assignedTo: task.assignedTo,
       timeline: task.timeline,
+      time: task.time ?? '',
       customDates: task.customDates ?? [],
-      dueDate: task.dueDate,
       priority: task.priority,
     },
   })
 
   const timeline = watch('timeline')
 
-  const onSubmit = (values) => {
-    const { attachment: newAttachment, ...rest } = values
-    const attachment =
-      newAttachment && newAttachment.length > 0
-        ? { name: newAttachment[0].name }
-        : attachmentRemoved
-          ? null
-          : (task.attachment ?? null)
+  // Assignee is read-only for now — the field stays in the modal so the user
+  // can see who the task is assigned to, but changing it isn't wired up yet.
+  const currentAssigneeOption = isAdminAssignee(task)
+    ? { value: 'admin', label: 'You (Admin)' }
+    : { value: task.assignee?.id, label: task.assignee?.name ?? 'Unassigned' }
 
-    onSave(task.id, { ...rest, attachment })
-    onClose()
+  const onSubmit = async (values) => {
+    setApiError(null)
+
+    try {
+      const response = await updateTask.mutateAsync({
+        taskId: task.id,
+        payload: {
+          title: values.title,
+          description: values.description,
+          broker: values.broker,
+          // Assignee is read-only in this modal for now — always resend the
+          // task's current assignee unchanged (still required by the API).
+          assigneeType: task.assignee?.type,
+          assigneeId: task.assignee?.id,
+          timeline: values.timeline,
+          time: values.time,
+          customDates: values.timeline === 'custom' ? values.customDates.filter((entry) => entry.date) : undefined,
+          priority: values.priority,
+          // Omitted entirely when no new file is chosen, so the API keeps the
+          // existing attachment (it has no separate "remove" mechanism).
+          attachment: values.attachment?.[0],
+        },
+      })
+      if (response?.data?.task) {
+        // Keep local-only fields (delayReason/delayReasonAt) intact — they
+        // aren't part of the API response, so mapApiTask would otherwise reset
+        // them to null on every edit.
+        const mapped = mapApiTask(response.data.task)
+        delete mapped.delayReason
+        delete mapped.delayReasonAt
+        updateTaskLocal(task.id, mapped)
+      }
+      onClose()
+    } catch (error) {
+      setApiError(error?.response?.data?.message ?? 'Unable to update the task. Please try again.')
+    }
   }
 
   return (
@@ -91,21 +125,14 @@ export default function EditTaskModal({ task, onClose, onSave }) {
 
           <div className="space-y-2">
             <label htmlFor="editTaskAttachment" className="block text-label-bold font-bold text-on-surface">
-              {task.attachment && !attachmentRemoved ? 'Replace attachment' : 'Add attachment'}
+              {task.attachmentUrl ? 'Replace attachment' : 'Add attachment'}
             </label>
-            {task.attachment && !attachmentRemoved && (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-border-light bg-surface-subtle px-4 py-2">
+            {task.attachmentUrl && (
+              <div className="flex items-center gap-2 rounded-lg border border-border-light bg-surface-subtle px-4 py-2">
                 <span className="flex items-center gap-2 text-body-md text-on-surface">
                   <span className="material-symbols-outlined text-[18px] text-on-surface-variant">description</span>
-                  Current: {task.attachment.name}
+                  Current: {attachmentFileName(task.attachmentUrl)}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setAttachmentRemoved(true)}
-                  className="text-label-md font-bold text-error hover:underline"
-                >
-                  Remove
-                </button>
               </div>
             )}
             <input
@@ -133,10 +160,9 @@ export default function EditTaskModal({ task, onClose, onSave }) {
 
           <SelectField
             label="Assigned To"
-            required
-            options={STAFF_OPTIONS}
-            error={errors.assignedTo?.message}
-            {...register('assignedTo')}
+            disabled
+            options={[currentAssigneeOption]}
+            defaultValue={currentAssigneeOption.value}
           />
 
           <SelectField
@@ -147,20 +173,25 @@ export default function EditTaskModal({ task, onClose, onSave }) {
             {...register('timeline')}
           />
 
-          {timeline === 'custom' && <CustomDatesField control={control} register={register} errors={errors} />}
+          {timeline === 'custom' && <CustomDatesField register={register} errors={errors} />}
 
-          <div className="space-y-2">
-            <label htmlFor="editTaskDueDate" className="block text-label-bold font-bold text-on-surface">
-              Due Date <span className="text-error">*</span>
-            </label>
-            <input
-              id="editTaskDueDate"
-              type="date"
-              className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
-              {...register('dueDate')}
-            />
-            {errors.dueDate && <p className="text-sm text-error">{errors.dueDate.message}</p>}
-          </div>
+          {timeline && (
+            <div className="space-y-2">
+              <label htmlFor="editTaskTime" className="block text-label-bold font-bold text-on-surface">
+                Time <span className="text-error">*</span>
+              </label>
+              <input
+                id="editTaskTime"
+                type="time"
+                className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
+                {...register('time')}
+              />
+              <p className="text-label-md text-on-surface-variant">
+                Time for {TIMELINE_OPTIONS.find((option) => option.value === timeline)?.label}
+              </p>
+              {errors.time && <p className="text-sm text-error">{errors.time.message}</p>}
+            </div>
+          )}
 
           <div className="space-y-3">
             <span className="block text-label-bold font-bold text-on-surface">Priority Level</span>
@@ -174,6 +205,8 @@ export default function EditTaskModal({ task, onClose, onSave }) {
             </div>
           </div>
 
+          {apiError && <p className="text-sm text-error">{apiError}</p>}
+
           <div className="flex justify-end gap-3 border-t border-border-light pt-unit-lg">
             <button
               type="button"
@@ -184,11 +217,11 @@ export default function EditTaskModal({ task, onClose, onSave }) {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || updateTask.isPending}
               className="flex items-center justify-center gap-2 rounded-lg bg-primary-container px-6 py-2.5 text-label-bold font-bold text-on-primary shadow-sm transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-70"
             >
               <span className="material-symbols-outlined text-[18px]">check</span>
-              {isSubmitting ? 'Saving…' : 'Save Changes'}
+              {isSubmitting || updateTask.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>

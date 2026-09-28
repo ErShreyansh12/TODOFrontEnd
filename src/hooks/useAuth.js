@@ -2,6 +2,11 @@ import { useMutation } from '@tanstack/react-query'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 
+export const useLogout = () =>
+  useMutation({
+    mutationFn: authService.logout,
+  })
+
 export const useLogin = () => {
   const setSession = useAuthStore((state) => state.setSession)
 

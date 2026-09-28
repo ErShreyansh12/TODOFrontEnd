@@ -5,6 +5,7 @@ import Login from '@/pages/auth/Login'
 import Dashboard from '@/pages/admin/Dashboard'
 import CreateTask from '@/pages/admin/CreateTask'
 import TaskBoard from '@/pages/admin/TaskBoard'
+import TaskDetail from '@/pages/TaskDetail'
 import StaffDirectory from '@/pages/admin/StaffDirectory'
 import Schedule from '@/pages/admin/Schedule'
 import Broadcast from '@/pages/admin/Broadcast'
@@ -36,6 +37,7 @@ export default function AppRoutes() {
             <Route path={ROUTES.ADMIN_DASHBOARD} element={<Dashboard />} />
             <Route path={ROUTES.ADMIN_TASKS_CREATE} element={<CreateTask />} />
             <Route path={ROUTES.ADMIN_TASK_BOARD} element={<TaskBoard />} />
+            <Route path={ROUTES.ADMIN_TASK_DETAIL} element={<TaskDetail />} />
             <Route path={ROUTES.ADMIN_STAFF} element={<StaffDirectory />} />
             <Route path={ROUTES.ADMIN_SCHEDULE} element={<Schedule />} />
             <Route path={ROUTES.ADMIN_BROADCAST} element={<Broadcast />} />
@@ -45,6 +47,7 @@ export default function AppRoutes() {
           <Route element={<RoleRoute allowedRoles={[Role.STAFF]} />}>
             <Route path={ROUTES.STAFF_DASHBOARD} element={<StaffDashboard />} />
             <Route path={ROUTES.STAFF_TASK_BOARD} element={<StaffTaskBoard />} />
+            <Route path={ROUTES.STAFF_TASK_DETAIL} element={<TaskDetail />} />
             <Route path={ROUTES.STAFF_PROFILE} element={<StaffProfile />} />
           </Route>
         </Route>

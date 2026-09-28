@@ -1,26 +1,31 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { addStaffSchema } from '@/features/staff/schemas/staff.schema'
-import { useAddStaff } from '@/hooks/useStaff'
+import { useUpdateStaff } from '@/hooks/useStaff'
 
-export default function AddStaffModal({ onClose, onAdd }) {
-  const addStaff = useAddStaff()
+export default function EditStaffModal({ staff, onClose, onSave }) {
+  const updateStaff = useUpdateStaff()
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(addStaffSchema),
-    defaultValues: { firstName: '', lastName: '', email: '', phone: '' },
+    defaultValues: {
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      email: staff.email ?? '',
+      phone: staff.phone ?? '',
+    },
   })
 
   const onSubmit = async (values) => {
     try {
-      const response = await addStaff.mutateAsync(values)
-      onAdd(response.data.staff)
+      const response = await updateStaff.mutateAsync({ staffId: staff.staffId, values })
+      onSave(response.data.staff)
       onClose()
     } catch {
-      // surfaced below via addStaff.isError
+      // surfaced below via updateStaff.isError
     }
   }
 
@@ -29,7 +34,7 @@ export default function AddStaffModal({ onClose, onAdd }) {
       <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-border-light bg-surface-container-lowest shadow-xl">
         <div className="flex items-center justify-between border-b border-border-light p-unit-lg">
-          <h2 className="font-[var(--font-headline)] text-headline-sm text-on-surface">Add Staff Member</h2>
+          <h2 className="font-[var(--font-headline)] text-headline-sm text-on-surface">Edit Staff Member</h2>
           <button
             type="button"
             onClick={onClose}
@@ -43,11 +48,11 @@ export default function AddStaffModal({ onClose, onAdd }) {
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-unit-lg p-unit-lg">
           <div className="grid grid-cols-1 gap-unit-lg md:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="staffFirstName" className="block text-label-bold font-bold text-on-surface">
+              <label htmlFor="editStaffFirstName" className="block text-label-bold font-bold text-on-surface">
                 First Name <span className="text-error">*</span>
               </label>
               <input
-                id="staffFirstName"
+                id="editStaffFirstName"
                 type="text"
                 placeholder="e.g., Priya"
                 className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
@@ -57,11 +62,11 @@ export default function AddStaffModal({ onClose, onAdd }) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="staffLastName" className="block text-label-bold font-bold text-on-surface">
+              <label htmlFor="editStaffLastName" className="block text-label-bold font-bold text-on-surface">
                 Last Name <span className="text-error">*</span>
               </label>
               <input
-                id="staffLastName"
+                id="editStaffLastName"
                 type="text"
                 placeholder="e.g., Nair"
                 className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
@@ -72,11 +77,11 @@ export default function AddStaffModal({ onClose, onAdd }) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="staffEmail" className="block text-label-bold font-bold text-on-surface">
+            <label htmlFor="editStaffEmail" className="block text-label-bold font-bold text-on-surface">
               Email
             </label>
             <input
-              id="staffEmail"
+              id="editStaffEmail"
               type="email"
               placeholder="e.g., priya.nair@taskmaster.pro"
               className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
@@ -86,11 +91,11 @@ export default function AddStaffModal({ onClose, onAdd }) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="staffPhone" className="block text-label-bold font-bold text-on-surface">
+            <label htmlFor="editStaffPhone" className="block text-label-bold font-bold text-on-surface">
               Phone Number
             </label>
             <input
-              id="staffPhone"
+              id="editStaffPhone"
               type="tel"
               placeholder="e.g., +1 (415) 555-0136"
               className="w-full rounded-lg border border-border-light bg-surface-subtle px-4 py-2 text-body-md text-on-surface placeholder-outline transition-shadow focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
@@ -99,9 +104,9 @@ export default function AddStaffModal({ onClose, onAdd }) {
             {errors.phone && <p className="text-sm text-error">{errors.phone.message}</p>}
           </div>
 
-          {addStaff.isError && (
+          {updateStaff.isError && (
             <p className="text-sm text-error">
-              {addStaff.error?.response?.data?.message ?? 'Unable to add staff member. Please try again.'}
+              {updateStaff.error?.response?.data?.message ?? 'Unable to update staff member. Please try again.'}
             </p>
           )}
 
@@ -115,11 +120,11 @@ export default function AddStaffModal({ onClose, onAdd }) {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || addStaff.isPending}
+              disabled={isSubmitting || updateStaff.isPending}
               className="flex items-center justify-center gap-2 rounded-lg bg-primary-container px-6 py-2.5 text-label-bold font-bold text-on-primary shadow-sm transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-70"
             >
               <span className="material-symbols-outlined text-[18px]">check</span>
-              {isSubmitting || addStaff.isPending ? 'Adding…' : 'Add Staff Member'}
+              {isSubmitting || updateStaff.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>

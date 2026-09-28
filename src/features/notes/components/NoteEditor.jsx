@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import { countChars, countWords, formatFullTimestamp } from '@/features/notes/utils/notes.utils'
 
-const AUTO_SAVE_DELAY = 900
-
 const CHECKLIST_HTML =
   '<div class="flex flex-col gap-1.5 my-2 bg-surface-container-low/40 p-3 rounded-lg"><label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="h-4 w-4 rounded accent-primary" /><span>New action item</span></label></div>'
 
@@ -15,7 +13,6 @@ const TABLE_HTML =
 
 export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onToggleArchive }) {
   const richEditorRef = useRef(null)
-  const debounceRef = useRef(null)
   const [title, setTitle] = useState(note?.title ?? '')
   const [contentHtml, setContentHtml] = useState(note?.contentHtml ?? '')
   const [isSourceMode, setIsSourceMode] = useState(false)
@@ -23,7 +20,6 @@ export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onTogg
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
   useEffect(() => {
-    clearTimeout(debounceRef.current)
     setTitle(note?.title ?? '')
     setContentHtml(note?.contentHtml ?? '')
     setIsSourceMode(false)
@@ -33,33 +29,28 @@ export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onTogg
     }
   }, [note?.id])
 
-  const commitSave = (nextTitle, nextContentHtml) => {
-    onSave(note.id, { title: nextTitle, contentHtml: nextContentHtml })
-    setSaveStatus('saved')
-  }
-
-  const scheduleAutoSave = (nextTitle, nextContentHtml) => {
-    setSaveStatus('saving')
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => commitSave(nextTitle, nextContentHtml), AUTO_SAVE_DELAY)
+  const commitSave = async (nextTitle, nextContentHtml) => {
+    try {
+      await onSave(note.id, { title: nextTitle, contentHtml: nextContentHtml })
+      setSaveStatus('saved')
+    } catch {
+      setSaveStatus('error')
+    }
   }
 
   const handleTitleChange = (event) => {
-    const value = event.target.value
-    setTitle(value)
-    scheduleAutoSave(value, contentHtml)
+    setTitle(event.target.value)
+    setSaveStatus('dirty')
   }
 
   const handleRichInput = () => {
-    const html = richEditorRef.current.innerHTML
-    setContentHtml(html)
-    scheduleAutoSave(title, html)
+    setContentHtml(richEditorRef.current.innerHTML)
+    setSaveStatus('dirty')
   }
 
   const handleSourceChange = (event) => {
-    const value = event.target.value
-    setContentHtml(value)
-    scheduleAutoSave(title, value)
+    setContentHtml(event.target.value)
+    setSaveStatus('dirty')
   }
 
   const exec = (command, value = null) => {
@@ -76,12 +67,11 @@ export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onTogg
   }
 
   const handleManualSave = () => {
-    clearTimeout(debounceRef.current)
+    setSaveStatus('saving')
     commitSave(title, contentHtml)
   }
 
   const handleDiscard = () => {
-    clearTimeout(debounceRef.current)
     setTitle(note.title)
     setContentHtml(note.contentHtml)
     if (richEditorRef.current) richEditorRef.current.innerHTML = note.contentHtml
@@ -102,15 +92,41 @@ export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onTogg
     )
   }
 
+  const canSave = saveStatus === 'dirty' || saveStatus === 'error'
+
   return (
     <div className="flex flex-col overflow-hidden rounded-xl bg-surface-container-lowest shadow-md lg:col-span-8">
       <div className="flex flex-wrap items-center justify-between gap-unit-sm bg-surface-subtle px-unit-lg py-3">
         <div className="flex items-center gap-unit-xs text-on-surface-variant">
-          <span className="material-symbols-outlined text-[18px] text-primary-container">
-            {saveStatus === 'saving' ? 'sync' : 'check_circle'}
+          <span
+            className={`material-symbols-outlined text-[18px] ${
+              saveStatus === 'error'
+                ? 'text-error'
+                : saveStatus === 'dirty'
+                  ? 'text-status-pending'
+                  : 'text-primary-container'
+            }`}
+          >
+            {saveStatus === 'saving'
+              ? 'sync'
+              : saveStatus === 'error'
+                ? 'error'
+                : saveStatus === 'dirty'
+                  ? 'edit'
+                  : 'check_circle'}
           </span>
-          <span className="text-label-md font-medium text-on-surface">
-            {saveStatus === 'saving' ? 'Saving changes...' : 'Draft auto-saved'}
+          <span
+            className={`text-label-md font-medium ${
+              saveStatus === 'error' ? 'text-error' : saveStatus === 'dirty' ? 'text-status-pending' : 'text-on-surface'
+            }`}
+          >
+            {saveStatus === 'saving'
+              ? 'Saving changes...'
+              : saveStatus === 'error'
+                ? "Couldn't save — try again"
+                : saveStatus === 'dirty'
+                  ? 'Unsaved changes'
+                  : 'All changes saved'}
           </span>
           {note.archived && (
             <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-label-md font-bold text-on-surface-variant">
@@ -163,7 +179,8 @@ export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onTogg
           <button
             type="button"
             onClick={handleManualSave}
-            className="flex items-center gap-1 rounded-lg bg-primary-container px-unit-md py-1.5 text-label-bold font-bold text-on-primary shadow-sm transition-opacity hover:opacity-95"
+            disabled={!canSave}
+            className="flex items-center gap-1 rounded-lg bg-primary-container px-unit-md py-1.5 text-label-bold font-bold text-on-primary shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">save</span>
             Save Note
@@ -347,14 +364,16 @@ export default function NoteEditor({ note, onSave, onDelete, onTogglePin, onTogg
           <button
             type="button"
             onClick={handleDiscard}
-            className="flex-1 rounded-lg bg-surface-container-low px-unit-md py-2 text-label-bold font-bold text-on-surface-variant transition-colors hover:bg-surface-container-high sm:flex-none"
+            disabled={!canSave}
+            className="flex-1 rounded-lg bg-surface-container-low px-unit-md py-2 text-label-bold font-bold text-on-surface-variant transition-colors hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
           >
             Discard Changes
           </button>
           <button
             type="button"
             onClick={handleManualSave}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-container px-unit-lg py-2 text-label-bold font-bold text-on-primary shadow-md transition-opacity hover:opacity-95 sm:flex-none"
+            disabled={!canSave}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-container px-unit-lg py-2 text-label-bold font-bold text-on-primary shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
           >
             <span className="material-symbols-outlined text-[18px]">check</span>
             Save Note

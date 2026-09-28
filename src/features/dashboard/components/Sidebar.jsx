@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
+import { useLogout } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { Role } from '@/constants/roles'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
@@ -25,13 +27,30 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const queryClient = useQueryClient()
+  const logoutMutation = useLogout()
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
   const isStaff = user?.role === Role.STAFF
   const navLinks = isStaff ? STAFF_NAV_LINKS : ADMIN_NAV_LINKS
 
-  const handleConfirmLogout = () => {
+  const endSession = () => {
     logout()
     navigate(ROUTES.LOGIN, { replace: true })
+    queryClient.clear()
+  }
+
+  const handleConfirmLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync()
+      endSession()
+    } catch (err) {
+      if (err?.response?.status === 401) endSession()
+    }
+  }
+
+  const openLogoutConfirm = () => {
+    logoutMutation.reset()
+    setIsLogoutConfirmOpen(true)
   }
 
   return (
@@ -148,7 +167,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           <button
             type="button"
             title="Logout"
-            onClick={() => setIsLogoutConfirmOpen(true)}
+            onClick={openLogoutConfirm}
             className={`flex w-full items-center gap-unit-md rounded-lg p-unit-sm text-label-bold font-bold tracking-[0.05em] text-tertiary transition-all hover:bg-error-container hover:text-on-error-container ${
               isCollapsed ? 'md:justify-center' : ''
             }`}
@@ -167,6 +186,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           cancelLabel="Cancel"
           confirmIcon="logout"
           tone="primary"
+          error={
+            logoutMutation.isError
+              ? (logoutMutation.error?.response?.data?.message ?? 'Unable to log out. Please try again.')
+              : null
+          }
+          isConfirming={logoutMutation.isPending}
           onConfirm={handleConfirmLogout}
           onCancel={() => setIsLogoutConfirmOpen(false)}
         />

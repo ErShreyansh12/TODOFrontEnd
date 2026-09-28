@@ -3,7 +3,7 @@ import { avatarColorFor, formatNoticeDate, initialsOf } from '@/features/broadca
 
 const STAFF_BY_ID = Object.fromEntries(STAFF_MEMBERS.map((member) => [member.id, member]))
 
-function RecipientStack({ recipientIds }) {
+export function RecipientStack({ recipientIds }) {
   const visible = recipientIds.slice(0, 3)
   const overflow = recipientIds.length - visible.length
 
@@ -27,7 +27,7 @@ function RecipientStack({ recipientIds }) {
   )
 }
 
-function StatusPill({ status }) {
+export function StatusPill({ status }) {
   const isActive = status === 'active'
   return (
     <span

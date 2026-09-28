@@ -14,7 +14,7 @@ export const createCustomDatesValidator =
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['customDates'],
-        message: 'Select at least one date',
+        message: 'Please select a date',
       })
       return
     }

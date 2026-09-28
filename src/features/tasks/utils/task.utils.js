@@ -1,7 +1,4 @@
-import { STAFF_OPTIONS } from '@/features/tasks/data/task-options.data'
-import { STAFF_MEMBERS } from '@/features/staff/data/staff.data'
-
-export const CURRENT_USER_ID = 'admin'
+import { ASSET_BASE_URL } from '@/config/api.config'
 
 export const TASK_STATUS = {
   TODO: 'todo',
@@ -42,47 +39,61 @@ export const PRIORITY_DOT_CLASS = {
   high: 'bg-status-delayed',
 }
 
-export const STAFF_NAME_MAP = {
-  ...Object.fromEntries(
-    STAFF_OPTIONS.filter((option) => option.value !== CURRENT_USER_ID).map((option) => [option.value, option.label]),
-  ),
-  ...Object.fromEntries(STAFF_MEMBERS.map((member) => [member.id, `${member.firstName} ${member.lastName}`])),
+const AVATAR_PALETTE = ['#3b82f6', '#a43a3a', '#8b5cf6', '#0ea5e9', '#ea580c', '#006c49', '#3f465c']
+
+// Deterministic color for a staff member's avatar, keyed by their id, so the
+// same person always gets the same color without needing a static lookup table.
+export const avatarColorFor = (id = '') => {
+  let hash = 0
+  for (let index = 0; index < id.length; index += 1) {
+    hash = id.charCodeAt(index) + ((hash << 5) - hash)
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]
 }
 
-const DIRECTORY_AVATAR_PALETTE = ['#3b82f6', '#a43a3a', '#8b5cf6', '#0ea5e9', '#ea580c']
+export const isAdminAssignee = (task) => task.assignee?.type === 'admin'
 
-export const STAFF_AVATAR_COLOR = {
-  rahul: '#006c49',
-  amit: '#3f465c',
-  neha: '#10b981',
-  ...Object.fromEntries(
-    STAFF_MEMBERS.map((member, index) => [member.id, DIRECTORY_AVATAR_PALETTE[index % DIRECTORY_AVATAR_PALETTE.length]]),
-  ),
+export const isAssignedTo = (task, assigneeId) => Boolean(assigneeId) && task.assignee?.id === assigneeId
+
+// Combines dueDate ("YYYY-MM-DD") + time ("HH:mm") into a real Date so overdue
+// can be judged against the current moment, not just the calendar date. A task
+// with no due time falls back to end-of-day, so it only turns overdue once its
+// due date has fully elapsed (rather than at midnight of that same day).
+const dueDateTimeOf = (task) => {
+  const [year, month, day] = task.dueDate.split('-').map(Number)
+  if (task.time) {
+    const [hours, minutes] = task.time.split(':').map(Number)
+    return new Date(year, month - 1, day, hours, minutes)
+  }
+  return new Date(year, month - 1, day, 23, 59, 59, 999)
 }
 
-const toDateKey = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+export const isTaskOverdue = (task, now = new Date()) =>
+  task.status !== TASK_STATUS.COMPLETED && dueDateTimeOf(task) < now
 
-export const isTaskOverdue = (task, today = new Date()) =>
-  task.status !== TASK_STATUS.COMPLETED && task.dueDate < toDateKey(today)
-
-export const getDisplayStatus = (task, today = new Date()) => {
+export const getDisplayStatus = (task, now = new Date()) => {
   if (task.status === TASK_STATUS.COMPLETED) return 'completed'
-  return isTaskOverdue(task, today) ? 'delayed' : task.status
+  return isTaskOverdue(task, now) ? 'delayed' : task.status
 }
 
-export const canEditTask = (task, currentUserId = CURRENT_USER_ID) =>
-  task.assignedTo === currentUserId || task.status === TASK_STATUS.TODO
+// Admin can edit any of their own tasks; a staff task can only be edited while
+// it's still in To Do (locks once work has started, matching the board's rule).
+export const canEditTask = (task) => isAdminAssignee(task) || task.status === TASK_STATUS.TODO
 
-export const canChangeStatus = (task, currentUserId = CURRENT_USER_ID) => task.assignedTo === currentUserId
+// Only the admin can change status on their own tasks from the admin side;
+// staff-side call sites gate this separately since a staff member's board is
+// already filtered down to their own tasks.
+export const canChangeStatus = (task) => isAdminAssignee(task)
 
 export const formatShortDate = (dateKey) => {
   const [year, month, day] = dateKey.split('-').map(Number)
   return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+export const formatTime = (time) => {
+  if (!time) return null
+  const [hours, minutes] = time.split(':').map(Number)
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
 export const initialsOf = (name) =>
@@ -94,3 +105,38 @@ export const initialsOf = (name) =>
     .toUpperCase()
 
 export const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)
+
+// Filename portion of a server-relative attachment path (e.g. "/uploads/tasks/<uuid>.pdf").
+// A locally-replaced attachment (Edit Task, before any upload API exists) is a
+// blob: URL with no real filename, so it just falls back to a generic label.
+export const attachmentFileName = (attachmentUrl) =>
+  (attachmentUrl?.startsWith('blob:') ? 'Attachment' : attachmentUrl?.split('/').pop()) ?? 'Attachment'
+
+// Resolves an attachment field into an openable URL. Server-relative paths
+// (e.g. "/uploads/tasks/<uuid>.pdf") need the API's origin prefixed; a blob:
+// URL from a local-only Edit Task replacement is already directly openable.
+export const resolveAttachmentUrl = (attachmentUrl) => {
+  if (!attachmentUrl) return null
+  if (/^(https?:|blob:|data:)/.test(attachmentUrl)) return attachmentUrl
+  return `${ASSET_BASE_URL}${attachmentUrl}`
+}
+
+// Normalizes a raw /tasks API record into the shape the app works with, adding
+// local-only fields (delayReason, delayReasonAt) that have no API yet.
+export const mapApiTask = (raw) => ({
+  id: raw.id,
+  title: raw.title,
+  description: raw.description ?? '',
+  attachmentUrl: raw.attachmentUrl ?? null,
+  broker: raw.broker ?? '',
+  assignee: raw.assignee,
+  priority: raw.priority,
+  status: raw.status,
+  timeline: raw.timeline,
+  customDates: raw.customDates ?? null,
+  dueDate: raw.dueDate,
+  time: raw.time,
+  createdAt: raw.createdAt,
+  delayReason: null,
+  delayReasonAt: null,
+})

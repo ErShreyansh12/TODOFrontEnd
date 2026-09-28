@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 import StaffTaskTable from '@/features/tasks/components/StaffTaskTable'
-import DelayReasonModal from '@/features/tasks/components/DelayReasonModal'
-import { useTaskStore } from '@/features/tasks/store/taskStore'
+import { useSyncedTasks } from '@/hooks/useTasks'
 import { useAuthStore } from '@/store/authStore'
-import { STATUS_META, getDisplayStatus } from '@/features/tasks/utils/task.utils'
+import { STATUS_META, getDisplayStatus, isAssignedTo } from '@/features/tasks/utils/task.utils'
 
 const STATUS_FILTER_OPTIONS = [
   { key: 'all', label: 'All Statuses' },
@@ -12,14 +11,11 @@ const STATUS_FILTER_OPTIONS = [
 
 export default function StaffTaskBoard() {
   const user = useAuthStore((state) => state.user)
-  const allTasks = useTaskStore((state) => state.tasks)
-  const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus)
-  const setDelayReason = useTaskStore((state) => state.setDelayReason)
+  const { tasks: allTasks, isLoading, isError } = useSyncedTasks()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [reasonTask, setReasonTask] = useState(null)
 
-  const myTasks = useMemo(() => allTasks.filter((task) => task.assignedTo === user?.id), [allTasks, user?.id])
+  const myTasks = useMemo(() => allTasks.filter((task) => isAssignedTo(task, user?.id)), [allTasks, user?.id])
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -29,8 +25,6 @@ export default function StaffTaskBoard() {
       return true
     })
   }, [myTasks, search, statusFilter])
-
-  const handleSaveReason = (taskId, reason) => setDelayReason(taskId, reason)
 
   return (
     <>
@@ -64,19 +58,14 @@ export default function StaffTaskBoard() {
 
       <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-border-light bg-surface-container-lowest px-unit-md py-unit-sm text-label-md text-on-surface-variant">
         <span className="material-symbols-outlined text-[15px]">info</span>
-        You can update the status of your tasks here. If a task runs past its due date, add a reason so admin can see
-        why.
+        Open a task to update its status. If it runs past its due date, add a reason there so admin can see why.
       </div>
 
-      <StaffTaskTable tasks={filteredTasks} onStatusChange={updateTaskStatus} onAddReason={setReasonTask} />
+      <StaffTaskTable tasks={filteredTasks} isLoading={isLoading} isError={isError} />
 
       <p className="text-label-md text-on-surface-variant">
         Showing {filteredTasks.length} of {myTasks.length} tasks
       </p>
-
-      {reasonTask && (
-        <DelayReasonModal task={reasonTask} onClose={() => setReasonTask(null)} onSave={handleSaveReason} />
-      )}
     </>
   )
 }

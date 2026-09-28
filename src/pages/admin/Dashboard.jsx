@@ -1,46 +1,166 @@
-import MetricCard from '@/features/dashboard/components/MetricCard'
-import StatusCard from '@/features/dashboard/components/StatusCard'
-import StaffSummaryTable from '@/features/dashboard/components/StaffSummaryTable'
-import ProductivityChart from '@/features/dashboard/components/ProductivityChart'
-import { METRICS, STATUS_BREAKDOWN, STAFF_SUMMARY, OVERALL_PRODUCTIVITY } from '@/features/dashboard/data/overview.data'
+import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { RecipientStack, StatusPill } from '@/features/broadcast/components/NoticeTable'
+import { useBroadcastStore } from '@/features/broadcast/store/broadcastStore'
+import { formatNoticeDate } from '@/features/broadcast/utils/broadcast.utils'
+import { useSyncedTasks } from '@/hooks/useTasks'
+import { avatarColorFor, initialsOf, isAdminAssignee, isTaskOverdue } from '@/features/tasks/utils/task.utils'
+import { EmptyRow, PanelHeader } from '@/features/dashboard/components/DashboardPanel'
+import PrivateNotesPanel from '@/features/dashboard/components/PrivateNotesPanel'
+import { ROUTES } from '@/constants/routes'
+
+const LIST_LIMIT = 3
 
 export default function Dashboard() {
+  const { tasks, isLoading, isError } = useSyncedTasks()
+  const notices = useBroadcastStore((state) => state.notices)
+
+  const staffSummary = useMemo(() => {
+    const byStaff = new Map()
+    tasks
+      .filter((task) => !isAdminAssignee(task))
+      .forEach((task) => {
+        const staffId = task.assignee?.id
+        const row = byStaff.get(staffId) ?? { id: staffId, name: task.assignee?.name ?? staffId, total: 0, done: 0, delayed: 0 }
+        row.total += 1
+        if (task.status === 'completed') row.done += 1
+        if (isTaskOverdue(task)) row.delayed += 1
+        byStaff.set(staffId, row)
+      })
+    return Array.from(byStaff.values())
+      .map((row) => ({
+        ...row,
+        pending: row.total - row.done,
+        percent: Math.round((row.done / row.total) * 100),
+      }))
+      .sort((a, b) => b.delayed - a.delayed || b.total - a.total)
+  }, [tasks])
+
+  const latestNotices = useMemo(
+    () => [...notices].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, LIST_LIMIT),
+    [notices],
+  )
+
   return (
     <>
-      <div className="flex flex-col justify-between gap-unit-md md:flex-row md:items-end">
-        <div>
-          <h2 className="mb-unit-xs font-[var(--font-headline)] text-headline-lg-mobile text-on-surface md:text-display-lg">
-            Overview
-          </h2>
-          <p className="text-body-lg text-on-surface-variant">System performance and staff metrics for today.</p>
+      <div>
+        <h2 className="mb-unit-xs font-[var(--font-headline)] text-headline-lg-mobile text-on-surface md:text-display-lg">
+          Dashboard
+        </h2>
+        <p className="text-body-lg text-on-surface-variant">Where your team stands today, plus your notes and notices.</p>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-margin-desktop lg:grid-cols-5">
+        <section className="overflow-hidden rounded-xl border border-border-light bg-surface-container-lowest shadow-sm lg:col-span-3">
+          <div className="flex items-center justify-between gap-unit-sm border-b border-border-light px-unit-lg py-unit-md">
+            <h3 className="flex items-center gap-2 font-[var(--font-headline)] text-headline-sm text-on-surface">
+              <span className="material-symbols-outlined text-[19px] text-primary">groups</span>
+              Staff-wise Task Summary
+            </h3>
+            <span className="hidden text-label-md text-on-surface-variant sm:block">Most delayed first</span>
+          </div>
+
+          {isLoading ? (
+            <EmptyRow>Loading tasks…</EmptyRow>
+          ) : isError ? (
+            <EmptyRow>Couldn't load tasks. Please refresh the page.</EmptyRow>
+          ) : staffSummary.length === 0 ? (
+            <EmptyRow>No tasks have been assigned to staff yet.</EmptyRow>
+          ) : (
+            <table className="w-full table-fixed border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border-light bg-surface-subtle text-label-bold font-bold tracking-[0.05em] text-on-surface-variant uppercase">
+                  <th className="py-unit-sm pr-2 pl-unit-lg font-medium">Staff</th>
+                  <th className="w-14 px-1 py-unit-sm font-medium">Total</th>
+                  <th className="hidden w-14 px-1 py-unit-sm font-medium sm:table-cell">Done</th>
+                  <th className="hidden w-[4.5rem] px-1 py-unit-sm font-medium sm:table-cell">Pending</th>
+                  <th className="w-[4.5rem] px-1 py-unit-sm font-medium">Delayed</th>
+                  <th className="w-20 py-unit-sm pr-unit-lg pl-1 text-right font-medium whitespace-nowrap">Done %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light text-body-md text-on-surface tabular-nums">
+                {staffSummary.map((row) => (
+                  <tr key={row.id} className="transition-colors hover:bg-surface-subtle">
+                    <td className="py-unit-md pr-2 pl-unit-lg">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-on-primary sm:flex"
+                          style={{ backgroundColor: avatarColorFor(row.id) }}
+                        >
+                          {initialsOf(row.name)}
+                        </span>
+                        <Link
+                          to={`${ROUTES.ADMIN_TASK_BOARD}?staff=${encodeURIComponent(row.id)}`}
+                          title={`View ${row.name}'s tasks`}
+                          className="truncate font-bold text-on-surface hover:text-primary hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-1">{row.total}</td>
+                    <td className={`hidden px-1 sm:table-cell ${row.done ? 'font-bold text-status-completed' : 'text-on-surface-variant/60'}`}>
+                      {row.done}
+                    </td>
+                    <td className={`hidden px-1 sm:table-cell ${row.pending ? 'font-bold text-status-pending' : 'text-on-surface-variant/60'}`}>
+                      {row.pending}
+                    </td>
+                    <td className={`px-1 ${row.delayed ? 'font-bold text-status-delayed' : 'text-on-surface-variant/60'}`}>
+                      {row.delayed}
+                    </td>
+                    <td
+                      className={`pr-unit-lg pl-1 text-right font-bold ${
+                        row.percent >= 50 ? 'text-status-completed' : 'text-status-pending'
+                      }`}
+                    >
+                      {row.percent}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <div className="flex items-center gap-1.5 border-t border-border-light bg-surface-subtle px-unit-lg py-unit-sm text-label-md text-on-surface-variant">
+            <span className="material-symbols-outlined text-[14px]">touch_app</span>
+            Click a name to see only that person's tasks on the Task Board.
+          </div>
+        </section>
+
+        <div className="flex min-w-0 flex-col gap-margin-desktop lg:col-span-2">
+          <PrivateNotesPanel />
+
+          <section className="overflow-hidden rounded-xl border border-border-light bg-surface-container-lowest shadow-sm">
+            <PanelHeader icon="campaign" title="Broadcast / Notice" to={ROUTES.ADMIN_BROADCAST} />
+            {latestNotices.length === 0 && <EmptyRow>No notices sent yet.</EmptyRow>}
+            {latestNotices.map((notice) => (
+              <Link
+                key={notice.id}
+                to={ROUTES.ADMIN_BROADCAST}
+                className={`flex gap-3 border-b border-border-light px-unit-lg py-unit-md transition-colors last:border-b-0 hover:bg-surface-subtle ${
+                  notice.status === 'inactive' ? 'opacity-60' : ''
+                }`}
+              >
+                <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-status-scheduled/10 text-status-scheduled">
+                  <span className="material-symbols-outlined text-[17px]">campaign</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-body-md font-bold text-on-surface">{notice.title}</span>
+                    <StatusPill status={notice.status} />
+                  </span>
+                  {notice.message && (
+                    <span className="block truncate text-label-md text-on-surface-variant">{notice.message}</span>
+                  )}
+                  <span className="mt-1.5 flex flex-wrap items-center gap-2 text-label-md text-on-surface-variant">
+                    <RecipientStack recipientIds={notice.recipientIds} />
+                    {notice.recipientIds.length} staff · {formatNoticeDate(notice.createdAt)}
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </section>
         </div>
-        <div className="relative hidden md:block">
-          <span className="material-symbols-outlined pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xl text-outline">
-            search
-          </span>
-          <input
-            type="text"
-            placeholder="Search tasks, staff..."
-            className="w-64 rounded-lg border border-border-light bg-surface-container-lowest py-2 pr-4 pl-10 text-body-md shadow-sm focus:border-primary-container focus:ring-2 focus:ring-primary-container focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-unit-md md:grid-cols-4 md:gap-gutter">
-        {METRICS.map(({ key, ...metric }) => (
-          <MetricCard key={key} {...metric} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 gap-unit-md md:grid-cols-4">
-        {STATUS_BREAKDOWN.map(({ key, ...status }) => (
-          <StatusCard key={key} {...status} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-margin-desktop lg:grid-cols-3">
-        <StaffSummaryTable staff={STAFF_SUMMARY} />
-        <ProductivityChart percentage={OVERALL_PRODUCTIVITY} />
       </div>
     </>
   )

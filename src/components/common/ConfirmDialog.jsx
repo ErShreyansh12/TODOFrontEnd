@@ -5,6 +5,8 @@ export default function ConfirmDialog({
   cancelLabel = 'No',
   confirmIcon = 'delete',
   tone = 'danger',
+  error,
+  isConfirming = false,
   onConfirm,
   onCancel,
 }) {
@@ -26,6 +28,7 @@ export default function ConfirmDialog({
             <div>
               <h2 className="font-[var(--font-headline)] text-headline-sm text-on-surface">{title}</h2>
               <p className="mt-1 text-body-md text-on-surface-variant">{description}</p>
+              {error && <p className="mt-2 text-sm text-error">{error}</p>}
             </div>
           </div>
         </div>
@@ -33,21 +36,23 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-border-light bg-transparent px-6 py-2.5 text-label-bold font-bold text-on-surface-variant transition-colors hover:bg-surface-subtle hover:text-on-surface"
+            disabled={isConfirming}
+            className="rounded-lg border border-border-light bg-transparent px-6 py-2.5 text-label-bold font-bold text-on-surface-variant transition-colors hover:bg-surface-subtle hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-70"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-label-bold font-bold shadow-sm transition-colors ${
+            disabled={isConfirming}
+            className={`flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-label-bold font-bold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
               isDanger
                 ? 'bg-error text-on-error hover:opacity-90'
                 : 'bg-primary-container text-on-primary hover:bg-primary'
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">{confirmIcon}</span>
-            {confirmLabel}
+            {isConfirming ? 'Please wait…' : confirmLabel}
           </button>
         </div>
       </div>
