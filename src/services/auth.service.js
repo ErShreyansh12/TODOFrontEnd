@@ -30,6 +30,12 @@ const loginStaff = async ({ identifier, password }) => {
         staffId: staff.staffId,
         name: [staff.firstName, staff.lastName].filter(Boolean).join(' '),
         email: staff.email,
+        // Shown read-only on the Profile page.
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        phone: staff.phone,
+        status: staff.status,
+        createdAt: staff.createdAt,
         role: Role.STAFF,
       },
       token,
@@ -45,4 +51,10 @@ export const authService = {
       : loginAdmin({ identifier: trimmedIdentifier, password })
   },
   logout: () => apiClient.post('/auth/logout').then((res) => res.data),
+  // Resolves with { data: { token } }: a fresh token that replaces the one used for this call, which the
+  // API stops accepting once the password changes (that is how other devices get signed out).
+  changePassword: ({ currentPassword, newPassword, confirmPassword }) =>
+    apiClient
+      .patch('/auth/change-password', { currentPassword, newPassword, confirmPassword })
+      .then((res) => res.data),
 }

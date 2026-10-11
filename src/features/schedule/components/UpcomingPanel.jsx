@@ -1,6 +1,7 @@
 import EventListItem from '@/features/schedule/components/EventListItem'
 
-export default function UpcomingPanel({ meetings, deadlines }) {
+// Meetings that haven't started yet (today and the next two days), straight from GET /meetings/upcoming.
+export default function UpcomingPanel({ meetings, isLoading, isError, onEditMeeting, onDeleteMeeting }) {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border-light p-unit-md">
@@ -8,26 +9,21 @@ export default function UpcomingPanel({ meetings, deadlines }) {
           <span className="material-symbols-outlined text-primary">event_upcoming</span>
           Upcoming
         </h3>
+        <p className="mt-1 text-label-md text-on-surface-variant">Today and the next two days</p>
       </div>
       <div className="flex-1 space-y-unit-md overflow-y-auto p-unit-md">
-        {meetings.length === 0 && <p className="text-body-md text-on-surface-variant">No upcoming meetings.</p>}
-        {meetings.map((event) => (
-          <EventListItem key={event.id} event={event} />
-        ))}
-
-        {deadlines.length > 0 && (
-          <>
-            <hr className="my-2 border-border-light" />
-            <h4 className="mb-2 text-label-bold font-bold tracking-[0.05em] text-on-surface-variant uppercase">
-              Upcoming Deadlines
-            </h4>
-            <div className="space-y-unit-md">
-              {deadlines.map((event) => (
-                <EventListItem key={event.id} event={event} />
-              ))}
-            </div>
-          </>
+        {isLoading && <p className="text-body-md text-on-surface-variant">Loading meetings…</p>}
+        {isError && !isLoading && (
+          <p className="text-body-md text-error">Couldn't load upcoming meetings. Please refresh the page.</p>
         )}
+        {!isLoading && !isError && meetings.length === 0 && (
+          <p className="text-body-md text-on-surface-variant">No upcoming meetings.</p>
+        )}
+        {!isLoading &&
+          !isError &&
+          meetings.map((event) => (
+            <EventListItem key={event.id} event={event} onEdit={onEditMeeting} onDelete={onDeleteMeeting} />
+          ))}
       </div>
     </div>
   )

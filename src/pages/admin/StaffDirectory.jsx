@@ -6,7 +6,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Toast from '@/components/common/Toast'
 import Pagination from '@/components/common/Pagination'
 import StatusChip from '@/features/staff/components/StatusChip'
-import { useStaffList, useDeleteStaff, useUpdateStaffStatus } from '@/hooks/useStaff'
+import { useStaffList, useDeleteStaff, useResetStaffPassword, useUpdateStaffStatus } from '@/hooks/useStaff'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50]
 
@@ -18,10 +18,12 @@ export default function StaffDirectory() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [staffToEdit, setStaffToEdit] = useState(null)
   const [staffToDelete, setStaffToDelete] = useState(null)
+  const [staffToReset, setStaffToReset] = useState(null)
   const [toast, setToast] = useState(null)
 
   const { data, isLoading, isError, error } = useStaffList({ page, limit })
   const deleteStaff = useDeleteStaff()
+  const resetPassword = useResetStaffPassword()
   const updateStaffStatus = useUpdateStaffStatus()
   const staff = data?.data ?? []
   const pagination = data?.pagination
@@ -67,6 +69,23 @@ export default function StaffDirectory() {
       setToast({ message: 'Staff Deleted Successfully.', tone: 'success' })
     } catch {
       // surfaced below via deleteStaff.isError
+    }
+  }
+
+  const handleConfirmReset = async () => {
+    try {
+      const response = await resetPassword.mutateAsync(staffToReset.staffId)
+      const { firstName, lastName } = staffToReset
+      const defaultPassword = response?.data?.defaultPassword
+      setStaffToReset(null)
+      setToast({
+        message: `Password reset. ${firstName} ${lastName} can now log in with the default password${
+          defaultPassword ? `: ${defaultPassword}` : ''
+        }.`,
+        tone: 'success',
+      })
+    } catch {
+      // surfaced in the dialog via resetPassword.isError
     }
   }
 
@@ -198,8 +217,17 @@ export default function StaffDirectory() {
                         </button>
                         <button
                           type="button"
-                          title="Reset Password"
-                          className="flex h-8 w-8 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                          title={
+                            member.status === 'active'
+                              ? 'Reset Password'
+                              : 'Reactivate this staff member before resetting their password'
+                          }
+                          disabled={member.status !== 'active'}
+                          onClick={() => {
+                            resetPassword.reset()
+                            setStaffToReset(member)
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-on-surface-variant"
                         >
                           <span className="material-symbols-outlined text-[20px]">lock_reset</span>
                         </button>
@@ -274,6 +302,25 @@ export default function StaffDirectory() {
           isConfirming={deleteStaff.isPending}
           onConfirm={handleConfirmDelete}
           onCancel={() => setStaffToDelete(null)}
+        />
+      )}
+
+      {staffToReset && (
+        <ConfirmDialog
+          title="Reset Password"
+          description={`Reset ${staffToReset.firstName} ${staffToReset.lastName}'s password to the default password? They will be signed out of all their devices and will need to log in again with the default password.`}
+          confirmLabel="Yes, Reset"
+          cancelLabel="No"
+          confirmIcon="lock_reset"
+          tone="primary"
+          error={
+            resetPassword.isError
+              ? (resetPassword.error?.response?.data?.message ?? 'Unable to reset the password. Please try again.')
+              : null
+          }
+          isConfirming={resetPassword.isPending}
+          onConfirm={handleConfirmReset}
+          onCancel={() => setStaffToReset(null)}
         />
       )}
 

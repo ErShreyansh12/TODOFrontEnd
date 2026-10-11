@@ -1,6 +1,7 @@
 import { isSameDay, toDateKey } from '@/features/schedule/utils/calendar.utils'
 
-const WEEKDAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+// Monday first, matching startOfWeek in calendar.utils.
+const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const eventDotClass = (type) => (type === 'deadline' ? 'bg-status-pending' : 'bg-status-scheduled')
 

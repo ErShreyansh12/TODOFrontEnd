@@ -7,4 +7,6 @@ export const staffService = {
   updateStatus: (staffId, status) =>
     apiClient.patch(`/staff/${staffId}/status`, { status }).then((res) => res.data),
   update: (staffId, payload) => apiClient.put(`/staff/${staffId}`, payload).then((res) => res.data),
+  // Resolves with { data: { staff, defaultPassword } }: the password the staff member now has.
+  resetPassword: (staffId) => apiClient.patch(`/staff/${staffId}/reset-password`).then((res) => res.data),
 }

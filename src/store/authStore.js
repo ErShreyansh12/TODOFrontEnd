@@ -10,6 +10,11 @@ export const useAuthStore = create((set) => ({
     setUser(user)
     set({ user, token, isAuthenticated: true })
   },
+  // Swaps in a new token for the same signed-in user (after a password change).
+  updateToken: (token) => {
+    setToken(token)
+    set({ token, isAuthenticated: true })
+  },
   logout: () => {
     clearToken()
     clearUser()

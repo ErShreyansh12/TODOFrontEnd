@@ -7,6 +7,19 @@ export const useLogout = () =>
     mutationFn: authService.logout,
   })
 
+// Changing the password hands back a new token. It is stored straight away, so this device stays signed in
+// while every other device is signed out.
+export const useChangePassword = () => {
+  const updateToken = useAuthStore((state) => state.updateToken)
+
+  return useMutation({
+    mutationFn: authService.changePassword,
+    onSuccess: (response) => {
+      if (response?.data?.token) updateToken(response.data.token)
+    },
+  })
+}
+
 export const useLogin = () => {
   const setSession = useAuthStore((state) => state.setSession)
 
